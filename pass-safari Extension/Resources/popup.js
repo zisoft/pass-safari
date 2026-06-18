@@ -1345,7 +1345,7 @@ function renderEntryDetailsLoading(entry) {
     detailsTitleElement.textContent = entry;
     detailsSubtitleElement.textContent = "Loading entry details…";
     detailsContentElement.hidden = false;
-    setDetailStatus("Loading entry details…");
+    setDetailStatus("");
 
     detailPasswordElement.textContent = "";
     detailUsernameRowElement.hidden = true;

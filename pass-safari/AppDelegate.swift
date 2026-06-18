@@ -8,7 +8,6 @@
 import Cocoa
 import Darwin
 
-private let legacySharedDataDirectoryName = ".pass-safari"
 private let sharedContainerDirectoryName = ".pass-safari"
 private let storeBookmarkKey = "PasswordStoreBookmark"
 private let storePathKey = "PasswordStorePath"
@@ -186,7 +185,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         NSApp.windows.forEach { $0.orderOut(nil) }
-        _ = NSRunningApplication.current.activate(options: [.activateIgnoringOtherApps])
+        //_ = NSRunningApplication.current.activate(options: [.activateIgnoringOtherApps])
 
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
@@ -640,7 +639,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
             let label = String(line[..<separatorIndex]).trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             let value = String(line[line.index(after: separatorIndex)...]).trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !value.isEmpty, ["url", "website", "site"].contains(label) else {
+            guard !value.isEmpty, ["url", "website", "site"].contains(where: label.hasPrefix) else {
                 continue
             }
 
