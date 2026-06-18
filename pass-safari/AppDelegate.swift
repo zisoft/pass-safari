@@ -33,22 +33,42 @@ private struct PassRequest {
     let content: String?
 }
 
+private struct StoreInventoryEntry {
+    let path: String
+    let modificationTime: TimeInterval
+}
+
 private struct StoreInventory {
-    let entries: [String]
+    let entries: [StoreInventoryEntry]
     let latestModificationTime: TimeInterval
 }
 
 private struct URLIndexCache: Codable {
-    let storePath: String
-    let entryCount: Int
-    let latestStoreModificationTime: TimeInterval
-    let generatedAt: TimeInterval
-    let entries: [String: URLIndexCacheEntry]
+    var storePath: String
+    var entryCount: Int
+    var latestStoreModificationTime: TimeInterval
+    var generatedAt: TimeInterval
+    var entries: [String: URLIndexCacheEntry]
+    
+    init(
+        storePath: String = "",
+        entryCount: Int = 0,
+        latestStoreModificationTime: TimeInterval = 0,
+        generatedAt: TimeInterval = 0,
+        entries: [String: URLIndexCacheEntry] = [:]
+    ) {
+        self.storePath = storePath
+        self.entryCount = entryCount
+        self.latestStoreModificationTime = latestStoreModificationTime
+        self.generatedAt = generatedAt
+        self.entries = entries
+    }
 }
 
 private struct URLIndexCacheEntry: Codable {
     let hosts: [String]
     let urls: [String]
+    let modificationTime: TimeInterval
 }
 
 private struct OTPDetails {
@@ -98,6 +118,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var mainWindowController: NSWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        
+        //refreshURLIndex()
+        
+        
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
             guard !self.suppressAutomaticWindowPresentation else {
                 return
@@ -319,33 +343,51 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             releaseURLIndexRefreshLock()
         }
 
+        
         do {
             let configuration = try resolvedStoreConfiguration()
-            let cache = try withStoreAccess(configuration) {
+            var cache = (try? readURLIndexCache()) ?? URLIndexCache()
+            var cacheUpdated = false
+
+            try withStoreAccess(configuration) {
                 let inventory = try storeInventory(in: configuration)
-                var indexedEntries: [String: URLIndexCacheEntry] = [:]
+                
+                if cache.generatedAt > inventory.latestModificationTime {
+                    return
+                }
 
                 for entry in inventory.entries {
                     do {
-                        let output = try runPass(arguments: ["show", entry], configuration: configuration)
-                        if let entryCache = urlIndexEntry(from: output) {
-                            indexedEntries[entry] = entryCache
+                        var refreshNeeded = false
+                        if let entryCache = cache.entries[entry.path] {
+                            refreshNeeded = entry.modificationTime > entryCache.modificationTime
+                        }
+                        else {
+                            refreshNeeded = true
+                        }
+                       
+                        if refreshNeeded {
+                            print(entry.path)
+                            let output = try runPass(arguments: ["show", entry.path], configuration: configuration)
+                            if let entryCache = urlIndexEntry(for: entry, from: output) {
+                                cache.entries[entry.path] = entryCache
+                                cacheUpdated = true
+                            }
                         }
                     } catch {
-                        NSLog("Failed to index pass entry %@: %@", entry, error.localizedDescription)
+                        NSLog("Failed to index pass entry %@: %@", entry.path, error.localizedDescription)
                     }
                 }
-
-                return URLIndexCache(
-                    storePath: configuration.url.path,
-                    entryCount: inventory.entries.count,
-                    latestStoreModificationTime: inventory.latestModificationTime,
-                    generatedAt: Date().timeIntervalSince1970,
-                    entries: indexedEntries
-                )
+                
+                if cacheUpdated {
+                    cache.storePath = configuration.url.path
+                    cache.entryCount = cache.entries.count
+                    cache.latestStoreModificationTime = inventory.latestModificationTime
+                    cache.generatedAt = Date().timeIntervalSince1970
+                    try writeURLIndexCache(cache)
+                }
             }
 
-            try writeURLIndexCache(cache)
         } catch {
             NSLog("Failed to refresh URL index: %@", error.localizedDescription)
         }
@@ -462,6 +504,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let data = try JSONEncoder().encode(cache)
         try data.write(to: urlIndexCacheFileURL(), options: .atomic)
     }
+    
+    private func readURLIndexCache() throws -> URLIndexCache {
+        let data = try Data(contentsOf: urlIndexCacheFileURL())
+        let cache = try JSONDecoder().decode(URLIndexCache.self, from: data)
+        return cache
+    }
 
     private func acquireURLIndexRefreshLock() -> Bool {
         guard let lockFileURL = try? urlIndexRefreshLockFileURL() else {
@@ -561,7 +609,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             throw PassError.executionFailed("Unable to read the password store.")
         }
 
-        var entries: [String] = []
+        var entries: [StoreInventoryEntry] = []
         var latestModificationTime: TimeInterval = 0
 
         for case let fileURL as URL in enumerator {
@@ -569,6 +617,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 continue
             }
 
+            var modificationTime: TimeInterval = 0
+            
             do {
                 let values = try fileURL.resourceValues(forKeys: Set(resourceKeys))
                 guard values.isRegularFile == true else {
@@ -576,6 +626,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
 
                 if let modificationDate = values.contentModificationDate {
+                    modificationTime = modificationDate.timeIntervalSince1970
                     latestModificationTime = max(latestModificationTime, modificationDate.timeIntervalSince1970)
                 }
             } catch {
@@ -587,10 +638,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 .deletingPathExtension()
                 .path
                 .replacingOccurrences(of: configuration.url.path + "/", with: "")
-            entries.append(relativePath)
+            
+            entries.append(StoreInventoryEntry(path: relativePath, modificationTime: modificationTime))
         }
 
-        entries.sort { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+        entries.sort { $0.path.localizedCaseInsensitiveCompare($1.path) == .orderedAscending }
         return StoreInventory(entries: entries, latestModificationTime: latestModificationTime)
     }
 
@@ -623,9 +675,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return (otpType, nil)
     }
 
-    private func urlIndexEntry(from output: String) -> URLIndexCacheEntry? {
+    private func urlIndexEntry(for entry: StoreInventoryEntry, from output: String) -> URLIndexCacheEntry? {
         let lines = output.replacingOccurrences(of: "\r\n", with: "\n").components(separatedBy: "\n")
-        guard lines.count > 1 else {
+        guard lines.count > 0 else {
             return nil
         }
 
@@ -656,13 +708,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        guard !urls.isEmpty || !hosts.isEmpty else {
-            return nil
-        }
+        //guard !urls.isEmpty || !hosts.isEmpty else {
+        //    return nil
+        //}
 
         return URLIndexCacheEntry(
             hosts: hosts.sorted(),
-            urls: urls.sorted()
+            urls: urls.sorted(),
+            modificationTime: entry.modificationTime
         )
     }
 
