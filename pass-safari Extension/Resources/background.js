@@ -14,16 +14,39 @@ browser.runtime.onMessage.addListener((request, sender) => {
 async function autofillBestMatchForTab(tab) {
     const tabId = tab?.id;
     const pageURL = typeof tab?.url === "string" ? tab.url : "";
-
+    
     if (!tabId || !pageURL) {
         return { ok: false, error: "Unable to find the active page for autofill." };
     }
+
+    
+    
+//    return sendMessageToTab(tabId, {
+//        command: "autofillEntry",
+//        password: "pwtest",
+//        username: "usertest",
+//        otp: "",
+//        url: "",
+//    });
+    //return;
+    
+    
+    
 
     const listResponse = await sendNativeMessage({
         command: "listEntries",
         pageURL,
     });
 
+//        return sendMessageToTab(tabId, {
+//            command: "autofillEntry",
+//            password: "pwtest",
+//            username: listResponse?.ok ? "ok" : "no",
+//            otp: "",
+//            url: "",
+//        });
+    
+    
     if (!listResponse?.ok) {
         throw new Error(listResponse?.error || "Unable to inspect pass entries for this page.");
     }

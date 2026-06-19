@@ -499,6 +499,10 @@ async function onAutofillEntryClick() {
         }
 
         setDetailStatus(response.message || "Autofill completed.");
+        
+        // close popup after autofill
+        window.close();
+        
     } catch (error) {
         setDetailStatus(error.message || "Unable to autofill the current page.", true);
     } finally {

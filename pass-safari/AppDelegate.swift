@@ -33,7 +33,7 @@ private struct PassRequest {
     let content: String?
 }
 
-private struct StoreInventoryEntry {
+private struct StoreInventoryEntry: Hashable {
     let path: String
     let modificationTime: TimeInterval
 }
@@ -70,6 +70,17 @@ private struct URLIndexCacheEntry: Codable {
     let urls: [String]
     let modificationTime: TimeInterval
 }
+
+
+
+// ------------------------------------------
+private struct URLIndexMatchCandidate {
+    let entry: String
+    let score: Int
+}
+// ------------------------------------------
+
+
 
 private struct OTPDetails {
     let code: String
@@ -120,6 +131,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         
         //refreshURLIndex()
+//        let response = listEntries(pageURL: "https://fotos.zisoft.de")
+//        print(response)
+//        exit(0)
         
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
@@ -130,7 +144,141 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self.showMainWindowIfNeeded()
         }
     }
+    
+    
+    
+    
+    // --- TEST BEGINN ------------------------------------------------------
+    
+    func listEntries(pageURL: String?) -> [String: Any] {
+        do {
+            var response: [String: Any] = [:]
 
+            let configuration = try resolvedStoreConfiguration()
+            let inventory = try withStoreAccess(configuration) {
+                try storeInventory(in: configuration)
+            }
+            var cache = (try? readURLIndexCache()) ?? URLIndexCache()
+
+            print(cache.entries.count)
+            
+            let matchCandidates = rankedURLIndexMatches(for: pageURL, inventory: inventory, cache: cache)
+            let suggestions = matchCandidates.prefix(5).map { $0.entry }
+
+            response["entries"] = inventory.entries.map { $0.path }
+            
+            if let shortcutMatchEntry = shortcutMatchEntry(from: matchCandidates) {
+                response["shortcutMatchEntry"] = shortcutMatchEntry
+            }
+            if !suggestions.isEmpty {
+                response["suggestedEntries"] = suggestions
+            }
+
+            return response
+        } catch {
+            var response: [String: Any] = [:]
+            response["entries"] = []
+            return response
+        }
+    }
+    
+    private func shortcutMatchEntry(from candidates: [URLIndexMatchCandidate]) -> String? {
+        let exactHostMatches = candidates.filter { $0.score >= 2200 }
+        guard exactHostMatches.count == 1 else {
+            return nil
+        }
+
+        return exactHostMatches.first?.entry
+    }
+    
+    private func normalizedHost(from rawHost: String?) -> String? {
+        guard let trimmedHost = rawHost?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+              !trimmedHost.isEmpty else {
+            return nil
+        }
+
+        return trimmedHost.hasPrefix("www.") ? String(trimmedHost.dropFirst(4)) : trimmedHost
+    }
+    
+    private func hostsMatch(_ leftHost: String, _ rightHost: String) -> Bool {
+        leftHost == rightHost || leftHost.hasSuffix(".\(rightHost)") || rightHost.hasSuffix(".\(leftHost)")
+    }
+    
+    private func score(entryCache: URLIndexCacheEntry, pageURL: URL) -> Int {
+        let normalizedPageHost = normalizedHost(from: pageURL.host) ?? ""
+        guard !normalizedPageHost.isEmpty else {
+            return 0
+        }
+
+        var score = 0
+
+        for cachedHost in entryCache.hosts.compactMap({ normalizedHost(from: $0) }) {
+            if cachedHost == normalizedPageHost {
+                score = max(score, 2200)
+            } else if hostsMatch(cachedHost, normalizedPageHost) {
+                score = max(score, 1700)
+            }
+        }
+
+        for rawURL in entryCache.urls {
+            guard let cachedURL = normalizedURL(from: rawURL),
+                  let cachedHost = normalizedHost(from: cachedURL.host) else {
+                continue
+            }
+
+            if cachedHost == normalizedPageHost {
+                score = max(score, 2400)
+
+                let cachedPath = cachedURL.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+                let pagePath = pageURL.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+                if !cachedPath.isEmpty && !pagePath.isEmpty {
+                    if pagePath.hasPrefix(cachedPath) || cachedPath.hasPrefix(pagePath) {
+                        score += 140
+                    }
+                }
+            } else if hostsMatch(cachedHost, normalizedPageHost) {
+                score = max(score, 1800)
+            }
+        }
+
+        return score
+    }
+    
+    private func rankedURLIndexMatches(for pageURL: String?, inventory: StoreInventory, cache: URLIndexCache?) -> [URLIndexMatchCandidate] {
+        guard let cache,
+              let normalizedPageURL = normalizedURL(from: pageURL) else {
+            return []
+        }
+
+        let availableEntries = Set(inventory.entries)
+        return cache.entries.compactMap { item -> URLIndexMatchCandidate? in
+            let (entryName, entryCache) = item
+            guard availableEntries.contains(where: { $0.path.lowercased() == entryName.lowercased()}) else {
+                return nil
+            }
+
+            let score = score(entryCache: entryCache, pageURL: normalizedPageURL)
+            return score > 0 ? URLIndexMatchCandidate(entry: entryName, score: score) : nil
+        }
+        .sorted { left, right in
+            if left.score != right.score {
+                return left.score > right.score
+            }
+
+            if left.entry.count != right.entry.count {
+                return left.entry.count < right.entry.count
+            }
+
+            return left.entry.localizedCaseInsensitiveCompare(right.entry) == .orderedAscending
+        }
+    }
+    // --- TEST ENDE ------------------------------------------------------
+
+    
+    
+    
+    
+    
     func application(_ application: NSApplication, open urls: [URL]) {
         suppressAutomaticWindowPresentation = true
 
@@ -736,16 +884,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         return nil
-    }
-
-    private func normalizedHost(from rawHost: String?) -> String? {
-        guard let trimmedHost = rawHost?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
-              !trimmedHost.isEmpty else {
-            return nil
-        }
-
-        let hostWithoutPath = trimmedHost.split(separator: "/", maxSplits: 1, omittingEmptySubsequences: true).first.map(String.init) ?? trimmedHost
-        return hostWithoutPath.hasPrefix("www.") ? String(hostWithoutPath.dropFirst(4)) : hostWithoutPath
     }
 
     private func normalizedEntryName(from rawEntryName: String?) throws -> String {

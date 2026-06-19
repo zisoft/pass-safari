@@ -39,8 +39,12 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
         let status: StoreSelectionEventStatus
     }
 
+    private struct StoreInventoryEntry: Hashable {
+        let path: String
+        let modificationTime: TimeInterval
+    }
     private struct StoreInventory {
-        let entries: [String]
+        let entries: [StoreInventoryEntry]
         let latestModificationTime: TimeInterval
     }
 
@@ -50,11 +54,26 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
         let latestStoreModificationTime: TimeInterval
         let generatedAt: TimeInterval
         let entries: [String: URLIndexCacheEntry]
+        
+        init(
+            storePath: String = "",
+            entryCount: Int = 0,
+            latestStoreModificationTime: TimeInterval = 0,
+            generatedAt: TimeInterval = 0,
+            entries: [String: URLIndexCacheEntry] = [:]
+        ) {
+            self.storePath = storePath
+            self.entryCount = entryCount
+            self.latestStoreModificationTime = latestStoreModificationTime
+            self.generatedAt = generatedAt
+            self.entries = entries
+        }
     }
 
     private struct URLIndexCacheEntry: Codable {
         let hosts: [String]
         let urls: [String]
+        let modificationTime: TimeInterval
     }
 
     private struct URLIndexMatchCandidate {
@@ -223,21 +242,22 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
             let inventory = try withStoreAccess(configuration) {
                 try storeInventory(in: configuration)
             }
-            let cache = readURLIndexCache()
-            let usableCache = cache?.storePath == configuration.url.path ? cache : nil
+            
+            let cache = (try? readURLIndexCache()) ?? URLIndexCache()
+            let usableCache = cache.storePath == configuration.url.path ? cache : nil
             let cacheNeedsRefresh = urlIndexNeedsRefresh(configuration: configuration, inventory: inventory, cache: usableCache)
             let urlIndexRefreshing = urlIndexRefreshLockIsActive()
-
+            
             if cacheNeedsRefresh && !urlIndexRefreshing {
                 try? launchContainingAppForURLIndexRefresh()
             }
-
+            
             let matchCandidates = rankedURLIndexMatches(for: pageURL, inventory: inventory, cache: usableCache)
             let suggestions = matchCandidates.prefix(5).map { $0.entry }
-
+            
             var response = response(for: configuration)
             response["ok"] = true
-            response["entries"] = inventory.entries
+            response["entries"] = inventory.entries.map{ $0.path }
             response["urlIndexReady"] = usableCache != nil
             response["urlIndexRefreshing"] = cacheNeedsRefresh || urlIndexRefreshing
             if let shortcutMatchEntry = shortcutMatchEntry(from: matchCandidates) {
@@ -441,7 +461,7 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
         )
     }
 
-    private func enumeratedEntries(in configuration: StoreConfiguration) throws -> [String] {
+    private func enumeratedEntries(in configuration: StoreConfiguration) throws -> [StoreInventoryEntry] {
         try storeInventory(in: configuration).entries
     }
 
@@ -472,7 +492,7 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
             throw PassError.executionFailed("Unable to read the password store.")
         }
 
-        var entries: [String] = []
+        var entries: [StoreInventoryEntry] = []
         var latestModificationTime: TimeInterval = 0
 
         for case let fileURL as URL in enumerator {
@@ -480,6 +500,8 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
                 continue
             }
 
+            var modificationTime: TimeInterval = 0
+            
             do {
                 let values = try fileURL.resourceValues(forKeys: Set(resourceKeys))
                 guard values.isRegularFile == true else {
@@ -487,6 +509,7 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
                 }
 
                 if let modificationDate = values.contentModificationDate {
+                    modificationTime = modificationDate.timeIntervalSince1970
                     latestModificationTime = max(latestModificationTime, modificationDate.timeIntervalSince1970)
                 }
             } catch {
@@ -498,10 +521,10 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
                 .deletingPathExtension()
                 .path
                 .replacingOccurrences(of: configuration.url.path + "/", with: "")
-            entries.append(relativePath)
+            entries.append(StoreInventoryEntry(path: relativePath, modificationTime: modificationTime))
         }
 
-        entries.sort { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+        entries.sort { $0.path.localizedCaseInsensitiveCompare($1.path) == .orderedAscending }
         return StoreInventory(entries: entries, latestModificationTime: latestModificationTime)
     }
 
@@ -760,7 +783,7 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
         let availableEntries = Set(inventory.entries)
         return cache.entries.compactMap { item -> URLIndexMatchCandidate? in
             let (entryName, entryCache) = item
-            guard availableEntries.contains(entryName) else {
+            guard availableEntries.contains(where: { $0.path.lowercased() == entryName.lowercased()}) else {
                 return nil
             }
 
@@ -860,13 +883,11 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
     private func hostsMatch(_ leftHost: String, _ rightHost: String) -> Bool {
         leftHost == rightHost || leftHost.hasSuffix(".\(rightHost)") || rightHost.hasSuffix(".\(leftHost)")
     }
-
-    private func readURLIndexCache() -> URLIndexCache? {
-        guard let data = try? Data(contentsOf: urlIndexCacheFileURL()) else {
-            return nil
-        }
-
-        return try? JSONDecoder().decode(URLIndexCache.self, from: data)
+    
+    private func readURLIndexCache() throws -> URLIndexCache {
+        let data = try Data(contentsOf: urlIndexCacheFileURL())
+        let cache = try JSONDecoder().decode(URLIndexCache.self, from: data)
+        return cache
     }
 
     private func urlIndexNeedsRefresh(configuration: StoreConfiguration, inventory: StoreInventory, cache: URLIndexCache?) -> Bool {
