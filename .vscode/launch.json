@@ -1,0 +1,25 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "attach",
+      "name": "Attach to Safari Extension",
+      "program": "${workspaceFolder}/build/pass-safari Extension.appex/Contents/MacOS/pass-safari Extension",
+      "processName": "pass-safari Extension",
+      "initCommands": [
+        "settings set target.language swift"
+      ]
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Launch Haupt-App (AppDelegate Debug)",
+      "program": "${workspaceFolder}/build/pass-safari.app/Contents/MacOS/pass-safari",
+      "stopOnEntry": true,
+      "initCommands": [
+        "settings set target.language swift"
+      ]
+    }
+  ]
+}

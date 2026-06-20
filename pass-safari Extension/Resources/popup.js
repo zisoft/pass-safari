@@ -988,8 +988,8 @@ function focusEntryButtonAtIndex(index) {
 
     const boundedIndex = Math.max(0, Math.min(index, buttons.length - 1));
     const button = buttons[boundedIndex];
-    button.focus();
     button.scrollIntoView({ block: "nearest" });
+    button.focus();
     return true;
 }
 

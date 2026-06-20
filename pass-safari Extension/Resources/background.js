@@ -3,6 +3,33 @@ const NATIVE_APP_IDS = [
     "de.zisoft.pass-safari.Extension",
 ];
 
+const tabsAPI = typeof browser !== 'undefined' ? browser.tabs : chrome.tabs;
+
+function handleUrlChange(url, tabId) {
+    if (!url) return;
+    
+    // Ignoriere Safari-interne Seiten (z.B. Favoriten/Leerer Tab)
+    if (url.startsWith('favorites://') || url.startsWith('safari-')) {
+        return;
+    }
+    
+    setBagdeCountForTab(url, tabId);
+}
+
+tabsAPI.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (changeInfo.url) {
+        handleUrlChange(changeInfo.url, tabId);
+    }
+});
+
+tabsAPI.onActivated.addListener((activeInfo) => {
+    tabsAPI.get(activeInfo.tabId, (tab) => {
+        if (tab && tab.url) {
+            handleUrlChange(tab.url, tab.id);
+        }
+    });
+});
+
 browser.runtime.onMessage.addListener((request, sender) => {
     if (request?.command === "triggerShortcutAutofill") {
         return autofillBestMatchForTab(sender.tab);
@@ -10,6 +37,32 @@ browser.runtime.onMessage.addListener((request, sender) => {
 
     return undefined;
 });
+
+async function setBagdeCountForTab(pageURL, tabId) {
+    const listResponse = await sendNativeMessage({
+        command: "listEntries",
+        pageURL,
+    });
+
+    if (!listResponse?.ok) {
+        throw new Error(listResponse?.error || "Unable to inspect pass entries for this page.");
+    }
+
+    if (listResponse.suggestedEntries) {
+        const count = `${listResponse.suggestedEntries.length}`;
+        
+        if (typeof browser !== 'undefined' && browser.action) {
+            browser.action.setBadgeText({ text: count, tabId: tabId });
+            browser.action.setBadgeBackgroundColor({ color: "#FF0000" }); // Optional: Hintergrundfarbe (z.B. Rot)
+        }
+        else if (typeof chrome !== 'undefined' && chrome.action) {
+            chrome.action.setBadgeText({ text: count, tabId: tabId });
+        }
+        else if (typeof browser !== 'undefined' && browser.browserAction) {
+            browser.browserAction.setBadgeText({ text: count, tabId: tabId });
+        }
+    }
+}
 
 async function autofillBestMatchForTab(tab) {
     const tabId = tab?.id;
@@ -19,38 +72,15 @@ async function autofillBestMatchForTab(tab) {
         return { ok: false, error: "Unable to find the active page for autofill." };
     }
 
-    
-    
-//    return sendMessageToTab(tabId, {
-//        command: "autofillEntry",
-//        password: "pwtest",
-//        username: "usertest",
-//        otp: "",
-//        url: "",
-//    });
-    //return;
-    
-    
-    
-
     const listResponse = await sendNativeMessage({
         command: "listEntries",
         pageURL,
     });
 
-//        return sendMessageToTab(tabId, {
-//            command: "autofillEntry",
-//            password: "pwtest",
-//            username: listResponse?.ok ? "ok" : "no",
-//            otp: "",
-//            url: "",
-//        });
-    
-    
     if (!listResponse?.ok) {
         throw new Error(listResponse?.error || "Unable to inspect pass entries for this page.");
     }
-
+    
     const entry = typeof listResponse.shortcutMatchEntry === "string"
         ? listResponse.shortcutMatchEntry
         : null;
