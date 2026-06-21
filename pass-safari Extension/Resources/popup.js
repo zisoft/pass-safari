@@ -6,6 +6,7 @@ const NATIVE_APP_IDS = [
 
 const searchInput = document.getElementById("search");
 const statusElement = document.getElementById("status");
+const suggestionsElement = document.getElementById("suggestions");
 const entriesElement = document.getElementById("entries");
 const storePathElement = document.getElementById("store-path");
 const storeModeElement = document.getElementById("store-mode");
@@ -61,6 +62,7 @@ const saveEditButton = document.getElementById("save-edit");
 const buttonFeedbackResetHandles = new WeakMap();
 
 let allEntries = [];
+let allSuggestions = [];
 let currentStorePath = DEFAULT_STORE_PATH;
 let currentTabURL = "";
 let usingDefaultStore = true;
@@ -719,6 +721,7 @@ async function loadEntries() {
         }
 
         allEntries = Array.isArray(response.entries) ? response.entries : [];
+        allSuggestions = Array.isArray(response.suggestedEntries) ? response.suggestedEntries : [];
 
         if (selectedEntry && !allEntries.includes(selectedEntry)) {
             clearSelectedEntry();
@@ -879,6 +882,27 @@ function bestMatchingEntryForCurrentTab(entries) {
     return rankedEntries[0]?.entry || null;
 }
 
+function createEntryButton(entry) {
+  const item = document.createElement("li");
+  item.className = "entry";
+  if (entry === selectedEntry) {
+    item.classList.add("selected");
+  }
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "entry-button";
+  button.dataset.entry = entry;
+  button.textContent = entry;
+  button.addEventListener("click", () => {
+    void onEntryClick(entry);
+  });
+
+  item.append(button);
+  return item;
+}
+
+
 function renderEntries() {
     const activeEntry = document.activeElement?.classList?.contains("entry-button")
         ? document.activeElement.dataset.entry
@@ -891,7 +915,11 @@ function renderEntries() {
     }
 
     entriesElement.replaceChildren();
+    suggestionsElement.replaceChildren();
 
+    const suggestionItems = allSuggestions.map((entry) => createEntryButton(entry));
+    suggestionsElement.append(...suggestionItems);
+  
     if (filteredEntries.length === 0) {
         const emptyState = document.createElement("li");
         emptyState.className = "empty-state";
@@ -900,26 +928,7 @@ function renderEntries() {
         return;
     }
 
-    const items = filteredEntries.map((entry) => {
-        const item = document.createElement("li");
-        item.className = "entry";
-        if (entry === selectedEntry) {
-            item.classList.add("selected");
-        }
-
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "entry-button";
-        button.dataset.entry = entry;
-        button.textContent = entry;
-        button.addEventListener("click", () => {
-            void onEntryClick(entry);
-        });
-
-        item.append(button);
-        return item;
-    });
-
+    const items = filteredEntries.map((entry) => createEntryButton(entry));
     entriesElement.append(...items);
 
     if (activeEntry) {

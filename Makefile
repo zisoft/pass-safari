@@ -14,5 +14,5 @@ build:
 run:
 	@echo "Starte App-Hülle..."
 	open build/$(PROJECT_NAME).app
-	@echo "Öffne Safari..."
-	open -a Safari
+	# @echo "Öffne Safari..."
+	# open -a Safari

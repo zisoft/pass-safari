@@ -85,7 +85,7 @@ input[type="search"]::placeholder {
 
 .entries {
     max-height: 208px;
-    margin: 0;
+    margin: 0 0 0.5em 0;
     padding: 0;
     overflow-y: auto;
     list-style: none;
@@ -141,7 +141,6 @@ input[type="search"]::placeholder {
 
 .details,
 .setup-panel {
-    margin-top: 9px;
     border: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
     border-radius: 8px;
 }

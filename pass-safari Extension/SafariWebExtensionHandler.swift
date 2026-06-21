@@ -266,6 +266,7 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
             if !suggestions.isEmpty {
                 response["suggestedEntries"] = suggestions
             }
+
             return response
         } catch {
             var response = errorResponse(for: error)
