@@ -10,7 +10,6 @@ import Darwin
 import SafariServices
 import os.log
 
-private let legacySharedDataDirectoryName = ".pass-safari"
 private let sharedContainerDirectoryName = ".pass-safari"
 private let storeBookmarkKey = "PasswordStoreBookmark"
 private let storePathKey = "PasswordStorePath"

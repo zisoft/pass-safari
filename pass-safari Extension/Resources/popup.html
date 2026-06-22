@@ -1,151 +1,159 @@
 <!DOCTYPE html>
 <html>
-<head>
+  <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="popup.css?v=1.0.5">
     <script type="module" src="popup.js?v=1.0.5"></script>
-</head>
-<body>
+  </head>
+  <body>
     <main class="popup">
-        <header class="header">
-            <div class="header-copy">
-                <h1>pass</h1>
-                <p class="subtitle">Search your password-store entries.</p>
+      <header class="header">
+        <div class="header-copy">
+          <h1>pass</h1>
+          <p class="subtitle">Search your password-store entries.</p>
+        </div>
+        <button id="toggle-setup" type="button" class="icon-button header-icon-button" aria-label="Show setup" aria-expanded="false" title="Setup">⚙</button>
+      </header>
+
+      <section id="setup-panel" class="setup-panel" hidden>
+        <div class="setup-header">
+          <h2>Setup</h2>
+        </div>
+
+        <div class="settings-panel">
+          <div class="settings-group">
+            <p class="field-label">Autofill shortcut</p>
+            <div class="shortcut-settings">
+              <code id="shortcut-display" class="shortcut-display">⌘⇧L</code>
+              <button id="record-shortcut" type="button" class="secondary compact-button">Change…</button>
+              <button id="reset-shortcut" type="button" class="secondary compact-button">Reset</button>
             </div>
-            <button id="toggle-setup" type="button" class="icon-button header-icon-button" aria-label="Show setup" aria-expanded="false" title="Setup">⚙</button>
-        </header>
+            <p id="shortcut-hint" class="hint">Works when a webpage has focus.</p>
+          </div>
 
-        <section id="setup-panel" class="setup-panel" hidden>
-            <div class="setup-header">
-                <h2>Setup</h2>
+          <div class="settings-group">
+            <p class="field-label">OTP autofill</p>
+            <label class="setting-toggle" for="otp-auto-submit">
+              <input id="otp-auto-submit" type="checkbox">
+              <span>Auto-submit dedicated OTP forms</span>
+            </label>
+            <p class="hint">When enabled, pass submits a form only after filling a one-time code and only when the page looks like a dedicated verification step.</p>
+          </div>
+
+          <div class="settings-group">
+            <p class="field-label">Password store folder</p>
+            <p id="store-path" class="store-path"></p>
+            <p id="store-mode" class="hint"></p>
+            <p class="hint">Default: <code>~/.password-store</code></p>
+            <p class="hint">Choosing a custom folder opens the companion macOS app.</p>
+
+            <div class="settings-actions">
+              <button id="use-default" type="button" class="secondary compact-button">Use default</button>
+              <button id="choose-store" type="button" class="secondary compact-button">Choose folder…</button>
             </div>
+          </div>
+        </div>
+      </section>
 
-            <div class="settings-panel">
-                <div class="settings-group">
-                    <p class="field-label">Autofill shortcut</p>
-                    <div class="shortcut-settings">
-                        <code id="shortcut-display" class="shortcut-display">⌘⇧L</code>
-                        <button id="record-shortcut" type="button" class="secondary compact-button">Change…</button>
-                        <button id="reset-shortcut" type="button" class="secondary compact-button">Reset</button>
-                    </div>
-                    <p id="shortcut-hint" class="hint">Works when a webpage has focus.</p>
-                </div>
+      <label class="field-label" for="search">Search</label>
+      <input id="search" type="search" placeholder="Type to filter entries" autocomplete="off" spellcheck="false">
 
-                <div class="settings-group">
-                    <p class="field-label">OTP autofill</p>
-                    <label class="setting-toggle" for="otp-auto-submit">
-                        <input id="otp-auto-submit" type="checkbox">
-                        <span>Auto-submit dedicated OTP forms</span>
-                    </label>
-                    <p class="hint">When enabled, pass submits a form only after filling a one-time code and only when the page looks like a dedicated verification step.</p>
-                </div>
+      <p id="status" class="status" role="status">Loading entries…</p>
 
-                <div class="settings-group">
-                    <p class="field-label">Password store folder</p>
-                    <p id="store-path" class="store-path"></p>
-                    <p id="store-mode" class="hint"></p>
-                    <p class="hint">Default: <code>~/.password-store</code></p>
-                    <p class="hint">Choosing a custom folder opens the companion macOS app.</p>
 
-                    <div class="settings-actions">
-                        <button id="use-default" type="button" class="secondary compact-button">Use default</button>
-                        <button id="choose-store" type="button" class="secondary compact-button">Choose folder…</button>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <label class="field-label" for="search">Search</label>
-        <input id="search" type="search" placeholder="Type to filter entries" autocomplete="off" spellcheck="false">
-
-        <p id="status" class="status" role="status">Loading entries…</p>
-
+      <div id="suggestions-area" hidden>
+        <label class="field-label">Suggestions</label>
         <ul id="suggestions" class="entries" aria-live="polite"></ul>
+      </div>
+
+      <div id="entries-area">
+        <label class="field-label">Entries</label>
         <ul id="entries" class="entries" aria-live="polite"></ul>
+      </div>
 
-        <section class="details" aria-live="polite">
-            <div class="details-header">
-                <h2 id="details-title">Entry details</h2>
-                <p id="details-subtitle" class="hint">Select an entry to inspect it.</p>
+      <section class="details" aria-live="polite">
+        <div class="details-header">
+          <h2 id="details-title">Entry details</h2>
+          <p id="details-subtitle" class="hint">Select an entry to inspect it.</p>
+        </div>
+
+        <div class="details-scroll-shell">
+          <div id="details-content" hidden>
+            <p id="details-status" class="status detail-status" role="status"></p>
+
+            <div class="detail-actions">
+              <button id="autofill-entry" type="button" class="compact-button primary-button" title="Shortcut: Enter" aria-keyshortcuts="Enter">Autofill</button>
+              <button id="edit-entry" type="button" class="compact-button secondary">Edit</button>
             </div>
 
-            <div class="details-scroll-shell">
-                <div id="details-content" hidden>
-                    <p id="details-status" class="status detail-status" role="status"></p>
-
-                    <div class="detail-actions">
-                        <button id="autofill-entry" type="button" class="compact-button primary-button" title="Shortcut: Enter" aria-keyshortcuts="Enter">Autofill</button>
-                        <button id="edit-entry" type="button" class="compact-button secondary">Edit</button>
-                    </div>
-
-                    <div class="detail-row">
-                        <div class="detail-body">
-                            <p class="detail-label">Password</p>
-                            <div class="detail-value-shell">
-                                <pre id="detail-password" class="detail-value"></pre>
-                                <button id="toggle-password" type="button" class="field-icon-button" aria-label="Show password" title="Show password">👁</button>
-                            </div>
-                        </div>
-                        <div class="detail-row-actions">
-                            <button id="copy-password" type="button" class="compact-button secondary">Copy</button>
-                        </div>
-                    </div>
-
-                    <div id="detail-username-row" class="detail-row" hidden>
-                        <div class="detail-body">
-                            <p class="detail-label">Username</p>
-                            <pre id="detail-username" class="detail-value"></pre>
-                        </div>
-                        <button id="copy-username" type="button" class="compact-button secondary detail-inline-action">Copy</button>
-                    </div>
-
-                    <div id="detail-otp-row" class="detail-row" hidden>
-                        <div class="detail-body">
-                            <p id="detail-otp-label" class="detail-label">One-time code</p>
-                            <pre id="detail-otp" class="detail-value"></pre>
-                        </div>
-                        <button id="copy-otp" type="button" class="compact-button secondary detail-inline-action">Copy</button>
-                    </div>
-
-                    <div id="detail-url-row" class="detail-stack" hidden>
-                        <p class="detail-label">URL</p>
-                        <pre id="detail-url" class="detail-value"></pre>
-                    </div>
-
-                    <div id="detail-fields-row" class="detail-stack" hidden>
-                        <p class="detail-label">Additional fields</p>
-                        <ul id="detail-fields" class="detail-fields"></ul>
-                    </div>
-
-                    <div id="detail-notes-row" class="detail-stack" hidden>
-                        <p class="detail-label">Notes</p>
-                        <pre id="detail-notes" class="detail-value"></pre>
-                    </div>
+            <div class="detail-row">
+              <div class="detail-body">
+                <p class="detail-label">Password</p>
+                <div class="detail-value-shell">
+                  <pre id="detail-password" class="detail-value"></pre>
+                  <button id="toggle-password" type="button" class="field-icon-button" aria-label="Show password" title="Show password">👁</button>
                 </div>
-            </div>
-        </section>
-
-        <section id="edit-panel" class="edit-panel" hidden>
-            <div class="edit-header">
-                <h2 id="edit-title">Edit entry</h2>
-                <button id="close-edit" type="button" class="icon-button" aria-label="Close" title="Close">✕</button>
+              </div>
+              <div class="detail-row-actions">
+                <button id="copy-password" type="button" class="compact-button secondary">Copy</button>
+              </div>
             </div>
 
-            <div class="edit-body">
-                <p id="edit-status" class="status" role="status"></p>
-                
-                <label class="field-label" for="edit-content">Entry content</label>
-                <p class="hint">First line is the password. Add fields like <code>username: user</code> or <code>url: https://example.com</code> on subsequent lines.</p>
-                <textarea id="edit-content" class="edit-textarea" rows="12" spellcheck="false"></textarea>
-
-                <div class="edit-actions">
-                    <button id="cancel-edit" type="button" class="compact-button secondary">Cancel</button>
-                    <button id="save-edit" type="button" class="compact-button primary-button">Save</button>
-                </div>
+            <div id="detail-username-row" class="detail-row" hidden>
+              <div class="detail-body">
+                <p class="detail-label">Username</p>
+                <pre id="detail-username" class="detail-value"></pre>
+              </div>
+              <button id="copy-username" type="button" class="compact-button secondary detail-inline-action">Copy</button>
             </div>
-        </section>
+
+            <div id="detail-otp-row" class="detail-row" hidden>
+              <div class="detail-body">
+                <p id="detail-otp-label" class="detail-label">One-time code</p>
+                <pre id="detail-otp" class="detail-value"></pre>
+              </div>
+              <button id="copy-otp" type="button" class="compact-button secondary detail-inline-action">Copy</button>
+            </div>
+
+            <div id="detail-url-row" class="detail-stack" hidden>
+              <p class="detail-label">URL</p>
+              <pre id="detail-url" class="detail-value"></pre>
+            </div>
+
+            <div id="detail-fields-row" class="detail-stack" hidden>
+              <p class="detail-label">Additional fields</p>
+              <ul id="detail-fields" class="detail-fields"></ul>
+            </div>
+
+            <div id="detail-notes-row" class="detail-stack" hidden>
+              <p class="detail-label">Notes</p>
+              <pre id="detail-notes" class="detail-value"></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="edit-panel" class="edit-panel" hidden>
+        <div class="edit-header">
+          <h2 id="edit-title">Edit entry</h2>
+          <button id="close-edit" type="button" class="icon-button" aria-label="Close" title="Close">✕</button>
+        </div>
+
+        <div class="edit-body">
+          <p id="edit-status" class="status" role="status"></p>
+
+          <label class="field-label" for="edit-content">Entry content</label>
+          <p class="hint">First line is the password. Add fields like <code>username: user</code> or <code>url: https://example.com</code> on subsequent lines.</p>
+          <textarea id="edit-content" class="edit-textarea" rows="12" spellcheck="false"></textarea>
+
+          <div class="edit-actions">
+            <button id="cancel-edit" type="button" class="compact-button secondary">Cancel</button>
+            <button id="save-edit" type="button" class="compact-button primary-button">Save</button>
+          </div>
+        </div>
+      </section>
 
     </main>
-</body>
+  </body>
 </html>
