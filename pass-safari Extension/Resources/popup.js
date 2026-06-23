@@ -1,16 +1,8 @@
-const DEFAULT_STORE_PATH = "~/.password-store";
 const NATIVE_APP_IDS = [
   "de.zisoft.pass-safari",
   "de.zisoft.pass-safari.Extension",
 ];
-
-const searchInput = document.getElementById("search");
-const statusElement = document.getElementById("status");
-const suggestionsArea = document.getElementById("suggestions-area");
-const suggestionsElement = document.getElementById("suggestions");
-const entriesElement = document.getElementById("entries");
-const storePathElement = document.getElementById("store-path");
-const storeModeElement = document.getElementById("store-mode");
+const DEFAULT_STORE_PATH = "~/.password-store";
 const SHORTCUT_STORAGE_KEY = "AutofillShortcutConfig";
 const OTP_AUTO_SUBMIT_STORAGE_KEY = "OTPAutofillAutoSubmitEnabled";
 const DEFAULT_AUTOFILL_SHORTCUT = Object.freeze({
@@ -21,6 +13,13 @@ const DEFAULT_AUTOFILL_SHORTCUT = Object.freeze({
   shiftKey: true,
 });
 
+const searchInput = document.getElementById("search");
+const statusElement = document.getElementById("status");
+const suggestionsArea = document.getElementById("suggestions-area");
+const suggestionsElement = document.getElementById("suggestions");
+const entriesElement = document.getElementById("entries");
+const storePathElement = document.getElementById("store-path");
+const storeModeElement = document.getElementById("store-mode");
 const chooseStoreButton = document.getElementById("choose-store");
 const useDefaultButton = document.getElementById("use-default");
 const toggleSetupButton = document.getElementById("toggle-setup");
@@ -49,6 +48,7 @@ const detailNotesElement = document.getElementById("detail-notes");
 const copyPasswordButton = document.getElementById("copy-password");
 const copyUsernameButton = document.getElementById("copy-username");
 const copyOTPButton = document.getElementById("copy-otp");
+const openURLButton = document.getElementById("open-url");
 const togglePasswordButton = document.getElementById("toggle-password");
 const autofillEntryButton = document.getElementById("autofill-entry");
 const editEntryButton = document.getElementById("edit-entry");
@@ -96,6 +96,7 @@ async function init() {
   copyPasswordButton.addEventListener("click", () => onCopyFieldClick("password"));
   copyUsernameButton.addEventListener("click", () => onCopyFieldClick("username"));
   copyOTPButton.addEventListener("click", () => onCopyFieldClick("otp"));
+  openURLButton.addEventListener("click", () => onOpenURLClick());
   togglePasswordButton.addEventListener("click", onTogglePasswordClick);
   autofillEntryButton.addEventListener("click", onAutofillEntryClick);
   editEntryButton.addEventListener("click", onEditEntryClick);
@@ -422,6 +423,19 @@ async function onCopyFieldClick(fieldName) {
   } catch (error) {
     setDetailStatus(error.message || "Unable to copy value.", true);
   }
+}
+
+function onOpenURLClick() {
+  if (!selectedEntryDetails) {
+    return;
+  }
+
+  const url = selectedEntryDetails["url"];
+  if (typeof url !== "string" || url.length === 0) {
+    return;
+  }
+
+  window.location.href = url;
 }
 
 function showTemporaryButtonFeedback(button, label, duration = 1200) {
@@ -1310,7 +1324,7 @@ function startOTPRefreshLoop() {
 function updatePasswordVisibility() {
   const password = typeof selectedEntryDetails?.password === "string" ? selectedEntryDetails.password : "";
   detailPasswordElement.textContent = isPasswordVisible ? password : maskSecretValue(password);
-  togglePasswordButton.textContent = "👁";
+  togglePasswordButton.innerHTML = isPasswordVisible ? togglePasswordButton.dataset.hide_icon : togglePasswordButton.dataset.show_icon;
   togglePasswordButton.setAttribute("aria-label", isPasswordVisible ? "Hide password" : "Show password");
   togglePasswordButton.title = isPasswordVisible ? "Hide password" : "Show password";
   togglePasswordButton.setAttribute("aria-pressed", String(isPasswordVisible));
@@ -1377,6 +1391,7 @@ function renderEntryDetailsLoading(entry) {
   copyPasswordButton.disabled = true;
   copyUsernameButton.disabled = true;
   copyOTPButton.disabled = true;
+  openURLButton.disabled = true;
   updatePasswordVisibility();
   updateAutofillButtonState();
 }
@@ -1404,6 +1419,7 @@ function renderEntryDetails(details) {
   const url = typeof details.url === "string" ? details.url : "";
   detailURLRowElement.hidden = !url;
   detailURLElement.textContent = url;
+  openURLButton.disabled = !url;
 
   const fields = Array.isArray(details.fields) ? details.fields : [];
   detailFieldsElement.replaceChildren();

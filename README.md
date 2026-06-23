@@ -190,11 +190,7 @@ Check Console.app and filter by "pass-safari" for detailed logs.
 
 ## License
 
-[Your license here]
-
-## Contributing
-
-[Contributing guidelines here]
+MIT — see [LICENSE](LICENSE).
 
 ## Credits
 

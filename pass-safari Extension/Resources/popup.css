@@ -377,9 +377,9 @@ input[type="search"]::placeholder {
 button {
   border: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
   border-radius: 8px;
-  padding: 6px 10px;
+  padding: 6px 0;
   font: inherit;
-  font-size: 11px;
+  font-size: 0.8em;
   line-height: 1.2;
   background: color-mix(in srgb, Canvas 94%, CanvasText 6%);
   color: inherit;
@@ -397,19 +397,24 @@ button.secondary {
   color: inherit;
 }
 
-button:not(.header-icon-button):not(.field-icon-button):not(:disabled):hover {
-  background: color-mix(in srgb, Canvas 90%, CanvasText 10%);
-  border-color: color-mix(in srgb, CanvasText 18%, transparent);
+button.icon {
+  background: none;
+  border: none;
 }
 
-button.primary-button:not(:disabled):hover {
-  background: #0077ed;
-  border-color: transparent;
+button.icon:hover {
+  color: #007aff; /* Apple Blau / Universelles Link-Blau */
 }
 
-button:not(.header-icon-button):not(.field-icon-button):not(:disabled):focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px color-mix(in srgb, #0a84ff 25%, transparent);
+button.icon svg {
+  width: 18px;
+  height: 18px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2; 
+  stroke: currentColor; 
+  fill: none; 
+  transition: stroke 0.2s ease;
 }
 
 button:disabled {
@@ -418,7 +423,6 @@ button:disabled {
 
 .compact-button {
   padding: 6px 10px;
-  min-height: 29px;
   white-space: nowrap;
 }
 
@@ -426,13 +430,19 @@ button:disabled {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 18px;
+  height: 18px;
   padding: 0;
-  border-radius: 999px;
+  border: none;
+  background: none;
   font-size: 14px;
   line-height: 1;
   flex-shrink: 0;
+}
+
+.icon-button:hover {
+  background: none;
+  color: #007aff; /* Apple Blau / Universelles Link-Blau */
 }
 
 .header-icon-button {
@@ -457,7 +467,6 @@ button:disabled {
 .header-icon-button:focus-visible {
   outline: none;
   border-radius: 6px;
-  box-shadow: 0 0 0 2px color-mix(in srgb, #0a84ff 28%, transparent);
 }
 
 .field-icon-button {
