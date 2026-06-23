@@ -38,38 +38,45 @@ body {
   margin-bottom: 0.5em;
 }
 
-.header-copy {
-  min-width: 0;
-}
-
-.header h1 {
-  margin: 0;
-  font-size: 17px;
-  line-height: 1.15;
+.title {
+  font-size: 1.2em;
+  font-weight: 600;
 }
 
 .subtitle {
-  margin: 3px 0 0;
-  font-size: 11px;
-  line-height: 1.3;
+  font-size: 0.8em;
   color: color-mix(in srgb, CanvasText 70%, transparent);
 }
 
 .field-label,
 .detail-label {
   display: block;
-  margin: 0 0 5px;
+  margin: 0;
   font-size: 0.8em;
   font-weight: 600;
   letter-spacing: 0.01em;
 }
 
+.status {
+  margin-bottom: 0.5em;
+  font-size: 0.8em;
+  color: color-mix(in srgb, CanvasText 70%, transparent);
+}
+
+.status.error {
+  color: #c62828;
+}
+
+.search-area {
+  margin-bottom: 0.5em;
+}
+
 input[type="search"] {
   box-sizing: border-box;
   width: 100%;
-  padding: 7px 10px;
+  padding: 0.2em 0.5em;
   border: 1px solid color-mix(in srgb, CanvasText 18%, transparent);
-  border-radius: 8px;
+  border-radius: 0.5em;
   background: Canvas;
   color: CanvasText;
   font: inherit;
@@ -83,18 +90,6 @@ input[type="search"]:focus {
 
 input[type="search"]::placeholder {
   color: color-mix(in srgb, CanvasText 50%, transparent);
-}
-
-.status {
-  min-height: 15px;
-  margin: 7px 0;
-  font-size: 11px;
-  line-height: 1.35;
-  color: color-mix(in srgb, CanvasText 70%, transparent);
-}
-
-.status.error {
-  color: #c62828;
 }
 
 .entries {
@@ -221,19 +216,7 @@ input[type="search"]::placeholder {
 }
 
 .detail-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 8px;
-  margin-top: 9px;
-}
-
-.detail-row-actions {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 5px;
-  flex-shrink: 0;
+  margin-bottom: 0.5em;
 }
 
 .detail-inline-action {
@@ -241,8 +224,30 @@ input[type="search"]::placeholder {
 }
 
 .detail-body {
-  min-width: 0;
-  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
+
+.detail-value {
+  flex: 1 1 auto;
+  margin: 0;
+  padding: 0.4em 0.5em;
+  border: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
+  border-radius: 0.2em;
+  background: color-mix(in srgb, Canvas 92%, CanvasText 8%);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  word-break: break-word;
+}
+
+.detail-value-shell .detail-value {
+  padding-right: 34px;
+}
+
+
+.detail-action {
+  flex: 0;
 }
 
 .detail-stack {
@@ -251,25 +256,6 @@ input[type="search"]::placeholder {
 
 .detail-value-shell {
   position: relative;
-}
-
-.detail-value {
-  box-sizing: border-box;
-  min-height: 31px;
-  margin: 0;
-  padding: 7px 9px;
-  border: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
-  border-radius: 8px;
-  background: color-mix(in srgb, Canvas 92%, CanvasText 8%);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
-  line-height: 1.38;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.detail-value-shell .detail-value {
-  padding-right: 34px;
 }
 
 .detail-fields {
@@ -552,7 +538,7 @@ code {
 }
 
 .edit-title {
-  font-size: 1.4em;
+  font-size: 1em;
   font-weight: 600;
 }
 
