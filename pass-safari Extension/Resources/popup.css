@@ -1,19 +1,33 @@
 :root {
   color-scheme: light dark;
-  font-family: system-ui;
+}
+
+html,
+body {
+  height: 100%;
+  box-sizing: border-box;
 }
 
 body {
   width: 360px;
+  height: 600px;
   margin: 0;
   padding: 0;
-  background: Canvas;
-  color: CanvasText;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #222222;
+  background-color: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    color: #f5f5f7;
+    background-color: #1e1e1e;
+  }
 }
 
 .popup {
   position: relative;
-  padding: 11px;
+  padding: 0.5em;
 }
 
 .header {
@@ -21,7 +35,7 @@ body {
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 8px;
+  margin-bottom: 0.5em;
 }
 
 .header-copy {
@@ -45,7 +59,7 @@ body {
 .detail-label {
   display: block;
   margin: 0 0 5px;
-  font-size: 11px;
+  font-size: 0.8em;
   font-weight: 600;
   letter-spacing: 0.01em;
 }
@@ -188,13 +202,11 @@ input[type="search"]::placeholder {
 #details-content {
   box-sizing: border-box;
   min-height: 0;
-  padding-bottom: 18px;
 }
 
 #details-content::after {
   content: "";
   display: block;
-  height: 18px;
 }
 
 .detail-status {
@@ -361,10 +373,15 @@ input[type="search"]::placeholder {
 }
 
 .hint {
-  margin: 5px 0 0;
-  font-size: 11px;
-  line-height: 1.32;
+  margin-bottom: 1em;
+  font-size: 0.8em;
   color: color-mix(in srgb, CanvasText 70%, transparent);
+}
+
+.hint pre {
+  display: inline-block;
+  margin: 0;
+  font-size: 1.2em;
 }
 
 .settings-actions {
@@ -406,7 +423,7 @@ button.icon:hover {
   color: #007aff; /* Apple Blau / Universelles Link-Blau */
 }
 
-button.icon svg {
+.icon svg {
   width: 18px;
   height: 18px;
   stroke-linecap: round;
@@ -508,6 +525,7 @@ code {
   left: 0;
   right: 0;
   bottom: 0;
+  height: 600px;
   background: Canvas;
   z-index: 100;
   display: flex;
@@ -521,9 +539,9 @@ code {
 
 .edit-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
+  gap: 0.5em;
+  padding: 0.8em 0.5em;
   border-bottom: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
 }
 
@@ -533,27 +551,32 @@ code {
   font-weight: 600;
 }
 
+.edit-title {
+  font-size: 1.4em;
+  font-weight: 600;
+}
+
 .edit-body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 16px;
+  padding: 0.5em;
   overflow: auto;
 }
 
 .edit-textarea {
   box-sizing: border-box;
   width: 100%;
-  padding: 8px;
+  flex: 1 1 auto;
+  padding: 0.5em;
   border: 1px solid color-mix(in srgb, CanvasText 18%, transparent);
-  border-radius: 8px;
+  border-radius: 0.5em;
   background: Canvas;
   color: CanvasText;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;
   line-height: 1.5;
   resize: vertical;
-  min-height: 200px;
 }
 
 .edit-textarea:focus {
@@ -571,8 +594,4 @@ code {
 
 .edit-panel .status {
   margin: 0 0 12px 0;
-}
-
-.edit-panel .hint {
-  margin: 4px 0 8px 0;
 }

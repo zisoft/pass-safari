@@ -157,15 +157,21 @@
 
       <section id="edit-panel" class="edit-panel" hidden>
         <div class="edit-header">
-          <h2 id="edit-title">Edit entry</h2>
-          <button id="close-edit" type="button" class="icon-button" aria-label="Close" title="Close">✕</button>
+          <div class="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pencil-icon lucide-pencil"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>
+          </div>
+          <div id="edit-title" class="edit-title">Edit entry</div>
         </div>
 
         <div class="edit-body">
           <p id="edit-status" class="status" role="status"></p>
 
           <label class="field-label" for="edit-content">Entry content</label>
-          <p class="hint">First line is the password. Add fields like <code>username: user</code> or <code>url: https://example.com</code> on subsequent lines.</p>
+          <div class="hint">
+            <div>First line is the password.</div>
+            <div>Use the format <pre>"key: value"</pre> for additional fields.</div>
+          </div>
+
           <textarea id="edit-content" class="edit-textarea" rows="12" spellcheck="false"></textarea>
 
           <div class="edit-actions">

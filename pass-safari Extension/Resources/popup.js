@@ -56,7 +56,6 @@ const editPanelElement = document.getElementById("edit-panel");
 const editTitleElement = document.getElementById("edit-title");
 const editStatusElement = document.getElementById("edit-status");
 const editContentTextarea = document.getElementById("edit-content");
-const closeEditButton = document.getElementById("close-edit");
 const cancelEditButton = document.getElementById("cancel-edit");
 const saveEditButton = document.getElementById("save-edit");
 
@@ -100,7 +99,6 @@ async function init() {
   togglePasswordButton.addEventListener("click", onTogglePasswordClick);
   autofillEntryButton.addEventListener("click", onAutofillEntryClick);
   editEntryButton.addEventListener("click", onEditEntryClick);
-  closeEditButton.addEventListener("click", onCloseEditClick);
   cancelEditButton.addEventListener("click", onCloseEditClick);
   saveEditButton.addEventListener("click", onSaveEditClick);
 
@@ -530,14 +528,14 @@ async function onAutofillEntryClick() {
 function onEditEntryClick() {
   if (!selectedEntry || !selectedEntryDetails) {
     return;
-  }
+  }-
 
   openEditPanel();
 }
 
 function openEditPanel() {
   editPanelElement.hidden = false;
-  editTitleElement.textContent = `Edit ${selectedEntry}`;
+  editTitleElement.textContent = `${selectedEntry}`;
   setEditStatus("");
 
   // Reconstruct the full entry content from the details
