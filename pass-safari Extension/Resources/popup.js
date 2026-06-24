@@ -52,6 +52,7 @@ const openURLButton = document.getElementById("open-url");
 const togglePasswordButton = document.getElementById("toggle-password");
 const autofillEntryButton = document.getElementById("autofill-entry");
 const editEntryButton = document.getElementById("edit-entry");
+const mainPanelElement = document.getElementById("main-panel");
 const editPanelElement = document.getElementById("edit-panel");
 const editTitleElement = document.getElementById("edit-title");
 const editStatusElement = document.getElementById("edit-status");
@@ -86,7 +87,7 @@ async function init() {
   entriesElement.addEventListener("keydown", onEntriesKeyDown);
   chooseStoreButton.addEventListener("click", onChooseStoreClick);
   useDefaultButton.addEventListener("click", onUseDefaultClick);
-  toggleSetupButton.addEventListener("click", onToggleSetupClick);
+  // toggleSetupButton.addEventListener("click", onToggleSetupClick);
   recordShortcutButton.addEventListener("click", onRecordShortcutClick);
   resetShortcutButton.addEventListener("click", onResetShortcutClick);
   otpAutoSubmitCheckboxElement.addEventListener("change", onOTPSubmitSettingChange);
@@ -525,15 +526,47 @@ async function onAutofillEntryClick() {
   }
 }
 
-function onEditEntryClick() {
-  if (!selectedEntry || !selectedEntryDetails) {
+async function getEntryData(entry) {
+  try {
+    selectedEntry = null;
+    selectedEntryDetails = null;
+
+    const response = await sendNativeMessage({
+      command: "getEntryDetails",
+      entry,
+    });
+
+    if (response?.storePath) {
+      applyStoreConfiguration(response);
+    }
+
+    if (!response?.ok) {
+      throw new Error(response?.error || "Unable to load entry details.");
+    }
+
+    selectedEntry = entry;
+    selectedEntryDetails = response;
+
+  } catch (error) {
+    renderEntryDetailsError(entry, error.message || "Unable to load entry details.");
+  }
+}
+
+async function onEditEntryClick() {
+  const entry = this.dataset.entry;
+  if(!entry)
     return;
-  }-
+
+  if (selectedEntry !== entry || !selectedEntryDetails) {
+    await getEntryData(entry);
+  }
 
   openEditPanel();
 }
 
 function openEditPanel() {
+  mainPanelElement.hidden = true;
+
   editPanelElement.hidden = false;
   editTitleElement.textContent = `${selectedEntry}`;
   setEditStatus("");
@@ -586,6 +619,7 @@ function closeEditPanel() {
   editPanelElement.hidden = true;
   editContentTextarea.value = "";
   setEditStatus("");
+  mainPanelElement.hidden = false;
 }
 
 async function onSaveEditClick() {
@@ -895,24 +929,85 @@ function bestMatchingEntryForCurrentTab(entries) {
   return rankedEntries[0]?.entry || null;
 }
 
-function createEntryButton(entry) {
-  const item = document.createElement("li");
+function createEntryIcon(entry,icon_id,div,hint_text,clickHandler) {
+  let icon_svg = null;
+  const svg = document.getElementById(icon_id);
+
+  if(!svg)
+    return;
+
+  icon_svg = svg.cloneNode(true);
+  icon_svg.id = null;
+
+  const icon_div = document.createElement("div");
+  icon_div.classList.add("icon","entry-icon");
+  icon_div.append(icon_svg);
+  icon_div.dataset.entry = entry;
+  icon_div.title = hint_text;
+  icon_div.addEventListener("click", clickHandler);
+  div.append(icon_div);
+}
+
+function createEntry(entry) {
+  const item = document.createElement("div");
   item.className = "entry";
   if (entry === selectedEntry) {
     item.classList.add("selected");
   }
 
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "entry-button";
-  button.dataset.entry = entry;
-  button.textContent = entry;
-  button.addEventListener("click", () => {
-    void onEntryClick(entry);
-  });
+  const text_div = document.createElement("div");
+  text_div.className = "entry-text";
+  text_div.append(document.createTextNode(entry));
+  text_div.title = "Click to autofill form";
+  text_div.dataset.entry = entry;
+  text_div.addEventListener("click", onEntryTitleClick);
+  item.append(text_div);
+  
+  const entry_buttons_div = document.createElement("div");
+  entry_buttons_div.className = "entry-buttons";
 
-  item.append(button);
+  createEntryIcon(entry,"icon-user",entry_buttons_div,"Copy username",onCopyUsernameClicked);
+  createEntryIcon(entry,"icon-password",entry_buttons_div,"Copy password",onCopyPasswordClick);
+  createEntryIcon(entry,"icon-edit",entry_buttons_div,"Edit entry",onEditEntryClick);
+
+  item.append(entry_buttons_div);
   return item;
+}
+
+async function onEntryTitleClick() {
+  const entry = this.dataset.entry;
+  
+  if(!entry)
+    return;
+
+  if(selectedEntry !== entry || !selectedEntryDetails)
+    await getEntryData(entry);
+
+  onAutofillEntryClick();
+}
+
+async function onCopyUsernameClicked() {
+  const entry = this.dataset.entry;
+  
+  if(!entry)
+    return;
+
+  if(selectedEntry !== entry || !selectedEntryDetails)
+    await getEntryData(entry);
+
+  onCopyFieldClick("username");
+}
+
+async function onCopyPasswordClick() {
+  const entry = this.dataset.entry;
+  
+  if(!entry)
+    return;
+
+  if(selectedEntry !== entry || !selectedEntryDetails)
+    await getEntryData(entry);
+
+  onCopyFieldClick("password");
 }
 
 
@@ -931,7 +1026,7 @@ function renderEntries() {
   suggestionsElement.replaceChildren();
 
   suggestionsArea.hidden = allSuggestions.length === 0;
-  const suggestionItems = allSuggestions.map((entry) => createEntryButton(entry));
+  const suggestionItems = allSuggestions.map((entry) => createEntry(entry));
   suggestionsElement.append(...suggestionItems);
 
   if (filteredEntries.length === 0) {
@@ -942,7 +1037,7 @@ function renderEntries() {
     return;
   }
 
-  const items = filteredEntries.map((entry) => createEntryButton(entry));
+  const items = filteredEntries.map((entry) => createEntry(entry));
   entriesElement.append(...items);
 
   if (activeEntry) {

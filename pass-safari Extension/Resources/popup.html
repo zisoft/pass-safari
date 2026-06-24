@@ -7,188 +7,227 @@
     <script type="module" src="popup.js?v=1.0.5"></script>
   </head>
   <body>
+    <div hidden>
+      <svg id="icon-user" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-icon lucide-user"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <svg id="icon-password" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-key-round-icon lucide-key-round"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>
+      <svg id="icon-edit" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pencil-icon lucide-pencil"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>
+    </div>
+
+
     <main class="popup">
-      <div class="header">
-        <div>
-          <div class="title">pass</div>
-          <div class="subtitle">Search your password-store entries.</div>
-        </div>
-        <button id="toggle-setup" type="button" class="icon" aria-label="Show setup" aria-expanded="false" title="Setup">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings-icon lucide-settings"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg>
-        </button>
-      </div>
 
-      <section id="setup-panel" class="setup-panel" hidden>
-        <div class="setup-header">
-          <h2>Setup</h2>
-        </div>
+      <div id="main-panel" class="panel">
 
-        <div class="settings-panel">
-          <div class="settings-group">
-            <p class="field-label">Autofill shortcut</p>
-            <div class="shortcut-settings">
-              <code id="shortcut-display" class="shortcut-display">⌘⇧L</code>
-              <button id="record-shortcut" type="button" class="secondary compact-button">Change…</button>
-              <button id="reset-shortcut" type="button" class="secondary compact-button">Reset</button>
+        <div class="panel-header">
+          <div class="icon-text">
+            <div class="icon header-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-key-round-icon lucide-key-round"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>
             </div>
-            <p id="shortcut-hint" class="hint">Works when a webpage has focus.</p>
-          </div>
-
-          <div class="settings-group">
-            <p class="field-label">OTP autofill</p>
-            <label class="setting-toggle" for="otp-auto-submit">
-              <input id="otp-auto-submit" type="checkbox">
-              <span>Auto-submit dedicated OTP forms</span>
-            </label>
-            <p class="hint">When enabled, pass submits a form only after filling a one-time code and only when the page looks like a dedicated verification step.</p>
-          </div>
-
-          <div class="settings-group">
-            <p class="field-label">Password store folder</p>
-            <p id="store-path" class="store-path"></p>
-            <p id="store-mode" class="hint"></p>
-            <p class="hint">Default: <code>~/.password-store</code></p>
-            <p class="hint">Choosing a custom folder opens the companion macOS app.</p>
-
-            <div class="settings-actions">
-              <button id="use-default" type="button" class="secondary compact-button">Use default</button>
-              <button id="choose-store" type="button" class="secondary compact-button">Choose folder…</button>
-            </div>
+            <div class="header-title">pass</div>
           </div>
         </div>
-      </section>
 
-      <div id="status" class="status" role="status">Loading entries…</div>
+        <div class="panel-content">
+          <div class="main-panel-content">
 
-      <div class="search-area">
-        <label class="field-label" for="search">Search</label>
-        <input id="search" type="search" placeholder="Type to filter entries" autocomplete="off" spellcheck="false">
-      </div>
-
-      <div id="suggestions-area" hidden>
-        <label class="field-label">Suggestions</label>
-        <ul id="suggestions" class="entries" aria-live="polite"></ul>
-      </div>
-
-      <div id="entries-area">
-        <label class="field-label">Entries</label>
-        <ul id="entries" class="entries" aria-live="polite"></ul>
-      </div>
-
-      <section class="details" aria-live="polite">
-        <div class="details-header">
-          <h2 id="details-title">Entry details</h2>
-          <p id="details-subtitle" class="hint">Select an entry to inspect it.</p>
-        </div>
-
-        <div class="details-scroll-shell">
-          <div id="details-content" hidden>
-            <p id="details-status" class="status detail-status" role="status"></p>
-
-            <div class="detail-actions">
-              <button id="autofill-entry" type="button" class="compact-button primary-button" title="Shortcut: Enter" aria-keyshortcuts="Enter">
-                Autofill
-              </button>
-              <button id="edit-entry" type="button" class="icon" title="Edit entry">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pencil-icon lucide-pencil"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>
-              </button>
+            <div class="search-area">
+              <label class="field-label" for="search">Search</label>
+              <input id="search" type="search" placeholder="Type to filter entries" autocomplete="off" spellcheck="false">
             </div>
 
-            <div class="detail-row">
-              <div class="detail-label">Password</div>
-              <div class="detail-body">
-                <div class="detail-value">
-                  <div class="detail-value-shell">
-                    <div id="detail-password"></div>
-                    <button id="toggle-password" type="button" class="field-icon-button" aria-label="Show password" title="Show password"
-                      data-show_icon='<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye-icon lucide-eye"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>'
-                      data-hide_icon='<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye-off-icon lucide-eye-off"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/></svg>'
-                    >
+            <div id="suggestions-area" class="suggestions-area" hidden>
+              <label class="field-label">Suggestions</label>
+              <div id="suggestions" class="entries"></div>
+            </div>
+
+            <div id="entries-area" class="entries-area">
+              <label class="field-label">Entries</label>
+              <div id="entries" class="entries"></div>
+            </div>
+
+          </div>
+
+        </div>
+
+        <div class="panel-footer">
+          footer
+        </div>
+      </div>
+
+      <div id="edit-panel" class="panel" hidden>
+
+        <div class="panel-header">
+          <div class="icon-text">
+            <div class="icon header-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pencil-icon lucide-pencil"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>
+            </div>
+            <div id="edit-title" class="header-title">Edit entry</div>
+          </div>
+        </div>
+
+        <div class="panel-content">
+          <div class="edit-panel-content">
+
+            <div class="edit-body">
+              <p id="edit-status" class="status" role="status"></p>
+
+              <label class="field-label" for="edit-content">Entry content</label>
+              <div class="hint">
+                <div>First line is the password.</div>
+                <div>Use the format <pre>"key: value"</pre> for additional fields.</div>
+              </div>
+
+              <textarea id="edit-content" class="edit-textarea" rows="12" spellcheck="false"></textarea>
+
+              <div class="edit-actions">
+                <button id="cancel-edit" type="button" class="compact-button secondary">Cancel</button>
+                <button id="save-edit" type="button" class="compact-button primary-button">Save</button>
+              </div>
+            </div>
+          </div>
+
+        <div class="panel-footer">
+          edit-footer
+        </div>
+      </div>
+
+
+      <div hidden>
+        
+        <section id="setup-panel" class="setup-panel" hidden>
+          <div class="setup-header">
+            <h2>Setup</h2>
+          </div>
+
+          <div class="settings-panel">
+            <div class="settings-group">
+              <p class="field-label">Autofill shortcut</p>
+              <div class="shortcut-settings">
+                <code id="shortcut-display" class="shortcut-display">⌘⇧L</code>
+                <button id="record-shortcut" type="button" class="secondary compact-button">Change…</button>
+                <button id="reset-shortcut" type="button" class="secondary compact-button">Reset</button>
+              </div>
+              <p id="shortcut-hint" class="hint">Works when a webpage has focus.</p>
+            </div>
+
+            <div class="settings-group">
+              <p class="field-label">OTP autofill</p>
+              <label class="setting-toggle" for="otp-auto-submit">
+                <input id="otp-auto-submit" type="checkbox">
+                <span>Auto-submit dedicated OTP forms</span>
+              </label>
+              <p class="hint">When enabled, pass submits a form only after filling a one-time code and only when the page looks like a dedicated verification step.</p>
+            </div>
+
+            <div class="settings-group">
+              <p class="field-label">Password store folder</p>
+              <p id="store-path" class="store-path"></p>
+              <p id="store-mode" class="hint"></p>
+              <p class="hint">Default: <code>~/.password-store</code></p>
+              <p class="hint">Choosing a custom folder opens the companion macOS app.</p>
+
+              <div class="settings-actions">
+                <button id="use-default" type="button" class="secondary compact-button">Use default</button>
+                <button id="choose-store" type="button" class="secondary compact-button">Choose folder…</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div id="status" class="status" role="status">Loading entries…</div>
+
+        <section class="details" aria-live="polite">
+          <div class="details-header">
+            <h2 id="details-title">Entry details</h2>
+            <p id="details-subtitle" class="hint">Select an entry to inspect it.</p>
+          </div>
+
+          <div class="details-scroll-shell">
+            <div id="details-content" hidden>
+              <p id="details-status" class="status detail-status" role="status"></p>
+
+              <div class="detail-actions">
+                <button id="autofill-entry" type="button" class="compact-button primary-button" title="Shortcut: Enter" aria-keyshortcuts="Enter">
+                  Autofill
+                </button>
+                <button id="edit-entry" type="button" class="icon" title="Edit entry">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pencil-icon lucide-pencil"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>
+                </button>
+              </div>
+
+              <div class="detail-row">
+                <div class="detail-label">Password</div>
+                <div class="detail-body">
+                  <div class="detail-value">
+                    <div class="detail-value-shell">
+                      <div id="detail-password"></div>
+                      <button id="toggle-password" type="button" class="field-icon-button" aria-label="Show password" title="Show password"
+                        data-show_icon='<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye-icon lucide-eye"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>'
+                        data-hide_icon='<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye-off-icon lucide-eye-off"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/></svg>'
+                      >
+                      </button>
+                    </div>
+                  </div>
+                  <div class="detail-action">
+                    <button id="copy-password" type="button" class="icon detail-inline-action" title="Copy password">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy-icon lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
                     </button>
                   </div>
                 </div>
-                <div class="detail-action">
-                  <button id="copy-password" type="button" class="icon detail-inline-action" title="Copy password">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy-icon lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-                  </button>
+              </div>
+
+              <div id="detail-username-row" class="detail-row" hidden>
+                <div class="detail-label">Username</div>
+                <div class="detail-body">
+                  <div id="detail-username" class="detail-value"></div>
+                  <div class="detail-action">
+                    <button id="copy-username" type="button" class="icon detail-inline-action" title="Copy username">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy-icon lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div id="detail-username-row" class="detail-row" hidden>
-              <div class="detail-label">Username</div>
-              <div class="detail-body">
-                <div id="detail-username" class="detail-value"></div>
-                <div class="detail-action">
-                  <button id="copy-username" type="button" class="icon detail-inline-action" title="Copy username">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy-icon lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-                  </button>
+              <div id="detail-otp-row" class="detail-row" hidden>
+                <div id="detail-otp-label" class="detail-label">One-time code</div>
+                <div class="detail-body">
+                  <div id="detail-otp" class="detail-value"></div>
+                  <div class="detail-action">
+                    <button id="copy-otp" type="button" class="icon detail-inline-action" title="Copy OTP">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy-icon lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div id="detail-otp-row" class="detail-row" hidden>
-              <div id="detail-otp-label" class="detail-label">One-time code</div>
-              <div class="detail-body">
-                <div id="detail-otp" class="detail-value"></div>
-                <div class="detail-action">
-                  <button id="copy-otp" type="button" class="icon detail-inline-action" title="Copy OTP">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy-icon lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-                  </button>
+              <div id="detail-url-row" class="detail-row" hidden>
+                <div class="detail-label">URL</div>
+                <div class="detail-body">
+                  <div id="detail-url" class="detail-value"></div>
+                  <div class="detail-action">
+                    <button id="open-url" type="button" class="icon detail-inline-action" title="Open URL">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-external-link-icon lucide-external-link"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div id="detail-url-row" class="detail-row" hidden>
-              <div class="detail-label">URL</div>
-              <div class="detail-body">
-                <div id="detail-url" class="detail-value"></div>
-                <div class="detail-action">
-                  <button id="open-url" type="button" class="icon detail-inline-action" title="Open URL">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-external-link-icon lucide-external-link"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
-                  </button>
-                </div>
+              <div id="detail-fields-row" class="detail-stack" hidden>
+                <p class="detail-label">Additional fields</p>
+                <ul id="detail-fields" class="detail-fields"></ul>
+              </div>
+
+              <div id="detail-notes-row" class="detail-stack" hidden>
+                <p class="detail-label">Notes</p>
+                <pre id="detail-notes" class="detail-value"></pre>
               </div>
             </div>
-
-            <div id="detail-fields-row" class="detail-stack" hidden>
-              <p class="detail-label">Additional fields</p>
-              <ul id="detail-fields" class="detail-fields"></ul>
-            </div>
-
-            <div id="detail-notes-row" class="detail-stack" hidden>
-              <p class="detail-label">Notes</p>
-              <pre id="detail-notes" class="detail-value"></pre>
-            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section id="edit-panel" class="edit-panel" hidden>
-        <div class="edit-header">
-          <div class="icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pencil-icon lucide-pencil"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>
-          </div>
-          <div id="edit-title" class="edit-title">Edit entry</div>
-        </div>
 
-        <div class="edit-body">
-          <p id="edit-status" class="status" role="status"></p>
+      </div>
 
-          <label class="field-label" for="edit-content">Entry content</label>
-          <div class="hint">
-            <div>First line is the password.</div>
-            <div>Use the format <pre>"key: value"</pre> for additional fields.</div>
-          </div>
-
-          <textarea id="edit-content" class="edit-textarea" rows="12" spellcheck="false"></textarea>
-
-          <div class="edit-actions">
-            <button id="cancel-edit" type="button" class="compact-button secondary">Cancel</button>
-            <button id="save-edit" type="button" class="compact-button primary-button">Save</button>
-          </div>
-        </div>
-      </section>
 
     </main>
   </body>
