@@ -316,6 +316,7 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
             response["ok"] = true
             response["entry"] = normalizedEntryName
             response["password"] = details.password
+            response["output"] = passResponse.output
             if let username = details.username {
                 response["username"] = username
             }

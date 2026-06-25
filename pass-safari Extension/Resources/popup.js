@@ -574,40 +574,8 @@ function openEditPanel() {
 
   setEditStatus("");
 
-  // Reconstruct the full entry content from the details
-  const lines = [];
-
-  // First line is always the password
-  if (selectedEntryDetails.password) {
-    lines.push(selectedEntryDetails.password);
-  }
-
-  // Add username if present
-  if (selectedEntryDetails.username) {
-    lines.push(`username: ${selectedEntryDetails.username}`);
-  }
-
-  // Add URL if present
-  if (selectedEntryDetails.url) {
-    lines.push(`url: ${selectedEntryDetails.url}`);
-  }
-
-  // Add custom fields
-  if (Array.isArray(selectedEntryDetails.fields)) {
-    for (const field of selectedEntryDetails.fields) {
-      if (field.label && field.value) {
-        lines.push(`${field.label}: ${field.value}`);
-      }
-    }
-  }
-
-  // Add notes if present
-  if (selectedEntryDetails.notes) {
-    lines.push("");
-    lines.push(selectedEntryDetails.notes);
-  }
-
-  editContentTextarea.value = lines.join("\n");
+  // use the entrie's raw text block
+  editContentTextarea.value = selectedEntryDetails.output;
 
   if(!newEntry) {
     editContentTextarea.focus();

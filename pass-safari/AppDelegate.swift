@@ -798,6 +798,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         return output.trimmingCharacters(in: .newlines)
+        // return output
     }
 
     private func updatePassEntry(entryName: String, content: String, configuration: StoreConfiguration) throws {
