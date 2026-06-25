@@ -30,8 +30,6 @@ const shortcutHintElement = document.getElementById("shortcut-hint");
 const recordShortcutButton = document.getElementById("record-shortcut");
 const resetShortcutButton = document.getElementById("reset-shortcut");
 const detailsTitleElement = document.getElementById("details-title");
-const detailsSubtitleElement = document.getElementById("details-subtitle");
-const detailsContentElement = document.getElementById("details-content");
 const detailsStatusElement = document.getElementById("details-status");
 const detailPasswordElement = document.getElementById("detail-password");
 const detailUsernameRowElement = document.getElementById("detail-username-row");
@@ -51,14 +49,18 @@ const copyOTPButton = document.getElementById("copy-otp");
 const openURLButton = document.getElementById("open-url");
 const togglePasswordButton = document.getElementById("toggle-password");
 const autofillEntryButton = document.getElementById("autofill-entry");
+const closeDetailsButton = document.getElementById("close-details");
 const editEntryButton = document.getElementById("edit-entry");
 const mainPanelElement = document.getElementById("main-panel");
 const editPanelElement = document.getElementById("edit-panel");
+const detailPanelElement = document.getElementById("detail-panel");
 const editTitleElement = document.getElementById("edit-title");
 const editStatusElement = document.getElementById("edit-status");
 const editContentTextarea = document.getElementById("edit-content");
 const cancelEditButton = document.getElementById("cancel-edit");
 const saveEditButton = document.getElementById("save-edit");
+const entriesCounter = document.getElementById("entries-counter");
+const suggestionsCounter = document.getElementById("suggestions-counter");
 
 const buttonFeedbackResetHandles = new WeakMap();
 
@@ -99,7 +101,8 @@ async function init() {
   openURLButton.addEventListener("click", () => onOpenURLClick());
   togglePasswordButton.addEventListener("click", onTogglePasswordClick);
   autofillEntryButton.addEventListener("click", onAutofillEntryClick);
-  editEntryButton.addEventListener("click", onEditEntryClick);
+  closeDetailsButton.addEventListener("click", onCloseDetailsClicked);
+  editEntryButton.addEventListener("click", openEditPanel);
   cancelEditButton.addEventListener("click", onCloseEditClick);
   saveEditButton.addEventListener("click", onSaveEditClick);
 
@@ -418,7 +421,6 @@ async function onCopyFieldClick(fieldName) {
       : fieldName === "username"
         ? copyUsernameButton
         : copyOTPButton;
-    showTemporaryButtonFeedback(feedbackButton, "Copied");
   } catch (error) {
     setDetailStatus(error.message || "Unable to copy value.", true);
   }
@@ -435,24 +437,6 @@ function onOpenURLClick() {
   }
 
   window.location.href = url;
-}
-
-function showTemporaryButtonFeedback(button, label, duration = 1200) {
-  const previousResetHandle = buttonFeedbackResetHandles.get(button);
-  if (previousResetHandle) {
-    clearTimeout(previousResetHandle);
-  }
-
-  const originalLabel = button.dataset.originalLabel || button.textContent || "";
-  button.dataset.originalLabel = originalLabel;
-  button.textContent = label;
-
-  const resetHandle = setTimeout(() => {
-    button.textContent = button.dataset.originalLabel || originalLabel;
-    buttonFeedbackResetHandles.delete(button);
-  }, duration);
-
-  buttonFeedbackResetHandles.set(button, resetHandle);
 }
 
 function onTogglePasswordClick() {
@@ -566,6 +550,7 @@ async function onEditEntryClick() {
 
 function openEditPanel() {
   mainPanelElement.hidden = true;
+  detailPanelElement.hidden = true;
 
   editPanelElement.hidden = false;
   editTitleElement.textContent = `${selectedEntry}`;
@@ -617,6 +602,7 @@ function onCloseEditClick() {
 
 function closeEditPanel() {
   editPanelElement.hidden = true;
+  detailPanelElement.hidden = true;
   editContentTextarea.value = "";
   setEditStatus("");
   mainPanelElement.hidden = false;
@@ -737,12 +723,10 @@ async function refreshURLIndexStatus() {
       : null;
 
     if (!selectedEntry && indexedSuggestedEntry) {
-      setStatus(`${refreshedEntries.length} entries loaded. Suggesting ${indexedSuggestedEntry} from the cached URL index for ${currentTabDisplayHost()}.`);
+      setStatus(`Suggesting ${indexedSuggestedEntry} for ${currentTabDisplayHost()}.`);
       await onEntryClick(indexedSuggestedEntry);
       return;
     }
-
-    setStatus(`${refreshedEntries.length} entries loaded.`);
   } catch {
     scheduleURLIndexStatusPoll(8000);
   }
@@ -770,6 +754,9 @@ async function loadEntries() {
     allEntries = Array.isArray(response.entries) ? response.entries : [];
     allSuggestions = Array.isArray(response.suggestedEntries) ? response.suggestedEntries : [];
 
+    entriesCounter.textContent = `${allEntries.length}`
+    suggestionsCounter.textContent = `${allSuggestions.length}`
+
     if (selectedEntry && !allEntries.includes(selectedEntry)) {
       clearSelectedEntry();
     }
@@ -788,14 +775,12 @@ async function loadEntries() {
     const suggestedEntry = selectedEntry ? null : (indexedSuggestedEntry || fallbackSuggestedEntry);
 
     if (suggestedEntry) {
-      const suggestionSource = indexedSuggestedEntry ? "the cached URL index" : "the entry path";
-      setStatus(`${allEntries.length} entries loaded. Suggesting ${suggestedEntry} from ${suggestionSource} for ${currentTabDisplayHost()}.`);
-      await onEntryClick(suggestedEntry);
+      setStatus(`Suggesting ${suggestedEntry} for ${currentTabDisplayHost()}.`);
     } else if (response?.urlIndexRefreshing) {
-      setStatus(`${allEntries.length} entries loaded. Building the site index in the background…`);
+      setStatus(` Building the site index in the background…`);
       scheduleURLIndexStatusPoll();
     } else {
-      setStatus(`${allEntries.length} entries loaded.`);
+      setStatus("");
     }
   } catch (error) {
     allEntries = [];
@@ -966,12 +951,44 @@ function createEntry(entry) {
   const entry_buttons_div = document.createElement("div");
   entry_buttons_div.className = "entry-buttons";
 
+  createEntryIcon(entry,"icon-show",entry_buttons_div,"Show entry",onShowEntryClick);
+  createEntryIcon(entry,"icon-link",entry_buttons_div,"Open URL",openURLClicked);
   createEntryIcon(entry,"icon-user",entry_buttons_div,"Copy username",onCopyUsernameClicked);
   createEntryIcon(entry,"icon-password",entry_buttons_div,"Copy password",onCopyPasswordClick);
   createEntryIcon(entry,"icon-edit",entry_buttons_div,"Edit entry",onEditEntryClick);
 
   item.append(entry_buttons_div);
   return item;
+}
+
+async function openURLClicked() {
+  const entry = this.dataset.entry;
+  
+  if(!entry)
+    return;
+
+  if(selectedEntry !== entry || !selectedEntryDetails)
+    await getEntryData(entry);
+
+  onOpenURLClick();
+}
+
+async function onShowEntryClick() {
+  const entry = this.dataset.entry;
+  
+  if(!entry)
+    return;
+
+  if(selectedEntry !== entry || !selectedEntryDetails)
+    await getEntryData(entry);
+
+  renderEntryDetails(selectedEntryDetails);
+}
+
+function onCloseDetailsClicked() {
+  detailPanelElement.hidden = true;
+  editPanelElement.hidden = true;
+  mainPanelElement.hidden = false;
 }
 
 async function onEntryTitleClick() {
@@ -1454,8 +1471,6 @@ function renderEntryDetailsEmpty() {
   stopOTPRefreshLoop();
   isPasswordVisible = false;
   detailsTitleElement.textContent = "Entry details";
-  detailsSubtitleElement.textContent = "Select an entry to inspect it.";
-  detailsContentElement.hidden = true;
   updatePasswordVisibility();
   updateAutofillButtonState();
   setDetailStatus("");
@@ -1465,8 +1480,6 @@ function renderEntryDetailsLoading(entry) {
   stopOTPRefreshLoop();
   isPasswordVisible = false;
   detailsTitleElement.textContent = entry;
-  detailsSubtitleElement.textContent = "Loading entry details…";
-  detailsContentElement.hidden = false;
   setDetailStatus("");
 
   detailPasswordElement.textContent = "";
@@ -1490,11 +1503,13 @@ function renderEntryDetailsLoading(entry) {
 }
 
 function renderEntryDetails(details) {
+  mainPanelElement.hidden = true;
+  editPanelElement.hidden = true;
+  detailPanelElement.hidden = false;
+
   stopOTPRefreshLoop();
   isPasswordVisible = false;
   detailsTitleElement.textContent = details.entry || selectedEntry || "Entry details";
-  detailsSubtitleElement.textContent = getEntryDetailsSubtitle(details);
-  detailsContentElement.hidden = false;
   setDetailStatus("");
 
   copyPasswordButton.disabled = !(details.password || "").length;
@@ -1550,8 +1565,6 @@ function renderEntryDetailsError(entry, message) {
   stopOTPRefreshLoop();
   isPasswordVisible = false;
   detailsTitleElement.textContent = entry;
-  detailsSubtitleElement.textContent = "Unable to load entry details.";
-  detailsContentElement.hidden = false;
   setDetailStatus(message, true);
 
   detailPasswordElement.textContent = "";

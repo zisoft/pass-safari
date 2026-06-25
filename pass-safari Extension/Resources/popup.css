@@ -1,6 +1,7 @@
 :root {
   --background-color: #ffffff;
-  --color: #222222;
+  --textcolor: #222222;
+  --subtextcolor: #999999;
   --accent-color: #007aff;
   --line-color: #cccccc;
   --error-color: #c62828;
@@ -10,7 +11,8 @@
 @media (prefers-color-scheme: dark) {
   :root {
 	--background-color: #1e1e1e;
-	--color: #f5f5f7;
+	--subtextcolor: #999999;
+	--textcolor: #f5f5f7;
 	--accent-color: #007aff;
 	--line-color: #cccccc;
 	--error-color: #c62828;
@@ -28,7 +30,7 @@ body {
   margin: 0;
   padding: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  color: var(--color);
+  color: var(--textcolor);
   background-color: var(--background-color);
 }
 
@@ -89,7 +91,8 @@ body {
 }
 
 .main-panel-content,
-.edit-panel-content {
+.edit-panel-content,
+.detail-panel-content {
   display: flex;
   flex-direction: column;
   flex: 1 1 0%;
@@ -98,7 +101,7 @@ body {
 
 .status {
   font-size: 0.8em;
-  color: color-mix(in srgb, CanvasText 70%, transparent);
+  color: var(--subtextcolor);
 }
 
 .status.error {
@@ -146,11 +149,31 @@ input[type="search"]::placeholder {
   padding-left: 0.5em;
 }
 
-.entries-area {
+.entries-area,
+.detail-content {
   flex: 1 1 0%;
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+.entries-header {
+  display: flex;
+  gap: 0.8em;
+  font-size: 0.8em;
+  padding: 0 0.5em;
+}
+
+.entries-header-title {
+  font-weight: 600;
+}
+
+.entries-header-counter {
+  color: var(--subtextcolor);
+}
+
+.detail-content {
+  padding: 0.5em;
 }
 
 .panel[hidden],
@@ -281,17 +304,14 @@ input[type="search"]::placeholder {
 
 .detail-actions {
   display: flex;
-  gap: 8px;
+  gap: 0.5em;
   justify-content: flex-end;
-  margin-bottom: 6px;
+  margin-bottom: 0.5em;
+  padding: 0.5em;
 }
 
 .detail-row {
   margin-bottom: 0.5em;
-}
-
-.detail-inline-action {
-  align-self: end;
 }
 
 .detail-body {
@@ -472,8 +492,16 @@ button.secondary {
 }
 
 button.icon {
-  width: 1em;
-  height: 1em;
+  border: none;
+  border-radius: 0;
+  background: none;
+  padding: 0;
+  margin: 0;
+}
+
+button.icon svg {
+  width: 1.4em;
+  height: 1.4em;
 }
 
 button.icon:hover {
@@ -546,17 +574,15 @@ button:disabled {
 .field-icon-button {
   position: absolute;
   top: 50%;
-  right: 5px;
+  right: 0;
   transform: translateY(-50%);
   width: 22px;
   height: 22px;
   padding: 0;
   border: 0;
-  border-radius: 6px;
+  border-radius: 0;
   background: transparent;
   color: color-mix(in srgb, CanvasText 72%, transparent);
-  font-size: 12px;
-  line-height: 1;
 }
 
 .field-icon-button:hover,
