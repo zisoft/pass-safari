@@ -542,7 +542,7 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
         let normalizedOutput = output.replacingOccurrences(of: "\r\n", with: "\n")
         let lines = normalizedOutput.components(separatedBy: "\n")
 
-        guard let firstLine = lines.first, !firstLine.isEmpty else {
+        guard let firstLine = lines.first else {
             throw PassError.invalidOutput
         }
 

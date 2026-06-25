@@ -797,8 +797,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             throw PassError.executionFailed(message)
         }
 
-        return output.trimmingCharacters(in: .newlines)
-        // return output
+        // return output.trimmingCharacters(in: .newlines)
+        return output
     }
 
     private func updatePassEntry(entryName: String, content: String, configuration: StoreConfiguration) throws {
