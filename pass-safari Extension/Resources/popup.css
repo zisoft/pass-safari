@@ -3,6 +3,7 @@
   --textcolor: #222222;
   --subtextcolor: #999999;
   --accent-color: #007aff;
+  --accent-textcolor: #eeeeee;
   --line-color: #cccccc;
   --error-color: #c62828;
   --accent-background: #eeeeee;
@@ -14,6 +15,7 @@
 	--subtextcolor: #999999;
 	--textcolor: #f5f5f7;
 	--accent-color: #007aff;
+	--accent-textcolor: #eeeeee;
 	--line-color: #cccccc;
 	--error-color: #c62828;
 	--accent-background: #eeeeee;
@@ -46,9 +48,9 @@ body {
 }
 
 .panel-header {
+  height: 2em;
   flex: 0 0 auto;
   display: flex;
-  justify-content: space-between;
   align-items: center;
   gap: 0.5em;
   padding: 0.5em;
@@ -56,14 +58,27 @@ body {
 }
 
 .icon-text {
+  flex: 1 1 auto;
   display: flex;
+  align-items: center;
   gap: 0.8em;
 }
-
+ 
 .header-icon {
+  flex: 0 0 auto;
   width: 1.2em;
   height: 1.2em;
   color: var(--accent-color);
+}
+
+.icon-text-text {
+  flex: 1 1 auto;
+}
+
+.icon-text-text input {
+  width: 90%;
+  font-size: 0.9em;
+  margin-top: 0.5em;
 }
 
 .header-title {
@@ -236,10 +251,9 @@ input[type="search"]::placeholder {
 .field-label,
 .detail-label {
   display: block;
-  margin: 0;
+  margin: 0 0 0.1em 0;
   font-size: 0.8em;
   font-weight: 600;
-  letter-spacing: 0.01em;
 }
 
 .details,
@@ -482,8 +496,8 @@ button {
 
 button.primary-button {
   border-color: transparent;
-  background: #0a84ff;
-  color: white;
+  background: var(--accent-color);
+  color: var(--accent-textcolor);
 }
 
 button.secondary {
@@ -524,8 +538,13 @@ button:disabled {
 }
 
 .compact-button {
-  padding: 6px 10px;
+  padding: 0.2em 0.4em;
   white-space: nowrap;
+}
+
+.compact-button svg {
+  width: 1.5em;
+  height: 1.5em;
 }
 
 .icon-button {
@@ -544,7 +563,7 @@ button:disabled {
 
 .icon-button:hover {
   background: none;
-  color: #007aff; /* Apple Blau / Universelles Link-Blau */
+  color: var(--accent-color);
 }
 
 .header-icon-button {

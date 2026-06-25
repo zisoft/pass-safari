@@ -55,12 +55,14 @@ const mainPanelElement = document.getElementById("main-panel");
 const editPanelElement = document.getElementById("edit-panel");
 const detailPanelElement = document.getElementById("detail-panel");
 const editTitleElement = document.getElementById("edit-title");
+const editTitleInput= document.getElementById("edit-title-input");
 const editStatusElement = document.getElementById("edit-status");
 const editContentTextarea = document.getElementById("edit-content");
 const cancelEditButton = document.getElementById("cancel-edit");
 const saveEditButton = document.getElementById("save-edit");
 const entriesCounter = document.getElementById("entries-counter");
 const suggestionsCounter = document.getElementById("suggestions-counter");
+const newEntryButton = document.getElementById("new-entry");
 
 const buttonFeedbackResetHandles = new WeakMap();
 
@@ -77,6 +79,7 @@ let otpRefreshIntervalHandle = null;
 let otpRefreshInFlight = false;
 let otpRefreshLastBucket = null;
 let urlIndexStatusPollTimeoutHandle = null;
+let newEntry = false;
 
 init().catch((error) => {
   console.error(error);
@@ -105,6 +108,7 @@ async function init() {
   editEntryButton.addEventListener("click", openEditPanel);
   cancelEditButton.addEventListener("click", onCloseEditClick);
   saveEditButton.addEventListener("click", onSaveEditClick);
+  newEntryButton.addEventListener("click", onNewEntryClick);
 
   try {
     await refreshActiveTabContext();
@@ -551,9 +555,23 @@ async function onEditEntryClick() {
 function openEditPanel() {
   mainPanelElement.hidden = true;
   detailPanelElement.hidden = true;
-
   editPanelElement.hidden = false;
-  editTitleElement.textContent = `${selectedEntry}`;
+
+  if(newEntry) {
+    editTitleElement.hidden = true;
+    editTitleInput.hidden = false;
+    selectedEntry = null;
+    selectedEntryDetails = null;
+    editContentTextarea.value = "";
+    editTitleInput.value = "";
+    editTitleInput.focus();
+  }
+  else {
+    editTitleElement.textContent = `${selectedEntry}`;
+    editTitleElement.hidden = false;
+    editTitleInput.hidden = true;
+  }
+
   setEditStatus("");
 
   // Reconstruct the full entry content from the details
@@ -591,9 +609,9 @@ function openEditPanel() {
 
   editContentTextarea.value = lines.join("\n");
 
-  requestAnimationFrame(() => {
+  if(!newEntry) {
     editContentTextarea.focus();
-  });
+  }
 }
 
 function onCloseEditClick() {
@@ -605,12 +623,24 @@ function closeEditPanel() {
   detailPanelElement.hidden = true;
   editContentTextarea.value = "";
   setEditStatus("");
+  if(newEntry)
+    loadEntries();
+  newEntry = false;
   mainPanelElement.hidden = false;
 }
 
 async function onSaveEditClick() {
-  if (!selectedEntry) {
+  if (!selectedEntry && !newEntry) {
     return;
+  }
+
+  if(newEntry) {
+    selectedEntry = editTitleInput.value;
+    if(!selectedEntry) {
+      setEditStatus("Title content cannot be empty.", true);
+      editTitleInput.focus();
+      return;
+    }
   }
 
   const content = editContentTextarea.value;
@@ -642,7 +672,6 @@ async function onSaveEditClick() {
     // Close the edit panel and reload the entry details
     setTimeout(() => {
       closeEditPanel();
-      void onEntryClick(selectedEntry);
     }, 800);
   } catch (error) {
     setEditStatus(error.message || "Unable to save entry.", true);
@@ -726,6 +755,9 @@ async function refreshURLIndexStatus() {
       setStatus(`Suggesting ${indexedSuggestedEntry} for ${currentTabDisplayHost()}.`);
       await onEntryClick(indexedSuggestedEntry);
       return;
+    }
+    else {
+      setStatus("");
     }
   } catch {
     scheduleURLIndexStatusPoll(8000);
@@ -1703,3 +1735,9 @@ async function sendNativeMessageToApp(applicationId, message) {
 
   throw new Error("Native messaging is not available in this browser.");
 }
+
+function onNewEntryClick() {
+  newEntry = true;
+  openEditPanel();
+}
+
