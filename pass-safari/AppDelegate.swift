@@ -812,7 +812,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             throw PassError.executionFailed(message)
         }
 
-        // return output.trimmingCharacters(in: .newlines)
         return output
     }
 

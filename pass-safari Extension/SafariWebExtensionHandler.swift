@@ -372,7 +372,7 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
         do {
             let normalizedEntryName = try normalizedEntryName(from: entryName)
             
-            guard let trimmedContent = content?.trimmingCharacters(in: .whitespacesAndNewlines),
+            guard let trimmedContent = content,
                   !trimmedContent.isEmpty else {
                 throw PassError.executionFailed("Entry content cannot be empty.")
             }
@@ -413,7 +413,7 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
     }
 
     private func copyText(_ text: String?) -> [String: Any] {
-        let trimmedText = text?.trimmingCharacters(in: .newlines)
+        let trimmedText = text
         guard let copyText = trimmedText, !copyText.isEmpty else {
             return errorResponse(for: PassError.missingCopyText)
         }
