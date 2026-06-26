@@ -16,7 +16,7 @@
       "request": "launch",
       "name": "Launch Haupt-App (AppDelegate Debug)",
       "program": "${workspaceFolder}/build/pass-safari.app/Contents/MacOS/pass-safari",
-      "stopOnEntry": true,
+      "stopOnEntry": false,
       "initCommands": [
         "settings set target.language swift"
       ]

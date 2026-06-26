@@ -119,6 +119,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var mainWindowController: NSWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
             guard !self.suppressAutomaticWindowPresentation else {
                 return
@@ -370,10 +371,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             try withStoreAccess(configuration) {
                 let inventory = try storeInventory(in: configuration)
                 
-                if cache.generatedAt > inventory.latestModificationTime {
-                    return
-                }
-
                 // remove entries from cache which no longer exist in inventory
                 let cache_set = Set(cache.entries.keys)
                 let inventory_set = Set(inventory.entries.map({ $0.path }))
@@ -386,6 +383,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     }
                 }
                 cache.entryCount = cache.entries.count
+
+                if !cacheUpdated && cache.entries.count == inventory.entries.count && cache.generatedAt > inventory.latestModificationTime {
+                    // nothing to do
+                    return
+                }
 
                 for entry in inventory.entries {
                     do {

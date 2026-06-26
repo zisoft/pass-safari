@@ -660,6 +660,8 @@ async function onDeleteEntryClicked() {
 
       setEditStatus("Entry deleted successfully.");
 
+      await loadEntries();
+
       // Close the edit panel and reload the entry details
       setTimeout(() => {
         closeEditPanel();
