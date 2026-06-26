@@ -6,6 +6,8 @@
   --accent-textcolor: #eeeeee;
   --line-color: #cccccc;
   --error-color: #c62828;
+  --danger-color: #c62828;
+  --danger-textcolor: #eeeeee;
   --accent-background: #eeeeee;
 }
 
@@ -18,6 +20,8 @@
 	--accent-textcolor: #eeeeee;
 	--line-color: #cccccc;
 	--error-color: #c62828;
+  --danger-color: #c62828;
+  --danger-textcolor: #eeeeee;
 	--accent-background: #eeeeee;
   }
 }
@@ -99,7 +103,19 @@ body {
   padding: 0.5em;
   border-top: 1px solid var(--line-color);
   display: flex;
+  align-items: center;
+  gap: 1em;
   justify-content: space-between;
+}
+
+.panel-status {
+  flex: 1 1 auto;
+}
+
+.panel-actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 0.5em;
 }
 
 .subtitle {
@@ -117,7 +133,6 @@ body {
 }
 
 .status {
-  flex: 1 1 auto;
   font-size: 0.8em;
   color: var(--subtextcolor);
 }
@@ -232,6 +247,7 @@ input[type="search"]::placeholder {
 .entry-icon svg {
   width: 1.4em;
   height: 1.4em;
+  margin-top: 0.125em;
 }
 
 .entry-icon:hover {
@@ -326,14 +342,6 @@ input[type="search"]::placeholder {
 
 .detail-status {
   margin-top: 0;
-}
-
-.detail-actions {
-  display: flex;
-  gap: 0.5em;
-  justify-content: flex-end;
-  margin-bottom: 0.5em;
-  padding: 0.5em;
 }
 
 .detail-row {
@@ -494,7 +502,7 @@ button {
   transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease, color 120ms ease;
 }
 
-button.primary-button {
+button.primary {
   border-color: transparent;
   background: var(--accent-color);
   color: var(--accent-textcolor);
@@ -503,6 +511,12 @@ button.primary-button {
 button.secondary {
   background: color-mix(in srgb, Canvas 94%, CanvasText 6%);
   color: inherit;
+}
+
+button.danger {
+  border-color: transparent;
+  background: var(--danger-color);
+  color: var(--danger-textcolor);
 }
 
 button.icon {
@@ -516,6 +530,7 @@ button.icon {
 button.icon svg {
   width: 1.4em;
   height: 1.4em;
+  margin-top: 0.125em;
 }
 
 button.icon:hover {
@@ -545,14 +560,15 @@ button:disabled {
 .compact-button svg {
   width: 1.5em;
   height: 1.5em;
+  margin-top: 0.125em;
 }
 
 .icon-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 1em;
+  height: 1em;
   padding: 0;
   border: none;
   background: none;
@@ -672,12 +688,6 @@ code {
 .edit-textarea:focus {
   outline: none;
   border-color: color-mix(in srgb, #0a84ff 60%, transparent);
-}
-
-.edit-actions {
-  flex: 0 0 auto;
-  display: flex;
-  gap: 0.5em;
 }
 
 .edit-panel .status {

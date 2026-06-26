@@ -86,6 +86,7 @@ private enum PassRequestCommand: String {
     case getEntryDetails
     case getEntryOTP
     case updateEntry
+    case deleteEntry
 }
 
 private enum PassError: LocalizedError {
@@ -320,6 +321,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     "requestId": requestID,
                     "ok": true,
                     "entry": entryName,
+                ]
+            case .deleteEntry:
+                let entryName = try normalizedEntryName(from: request.entry)
+                
+                let configuration = try resolvedStoreConfiguration()
+                try withStoreAccess(configuration) {
+                    try deletePassEntry(entryName: entryName, configuration: configuration)
+                }
+
+                response = [
+                    "requestId": requestID,
+                    "ok": true
                 ]
             }
 
@@ -830,6 +843,43 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             try inputPipe.fileHandleForWriting.close()
         } catch {
             throw PassError.executionFailed("Failed to run 'pass insert': \(error.localizedDescription)")
+        }
+
+        process.waitUntilExit()
+
+        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+        let errorOutput = String(data: errorData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        guard process.terminationStatus == 0 else {
+            let message = errorOutput.isEmpty ? "'pass insert' exited with status \(process.terminationStatus)." : errorOutput
+            throw PassError.executionFailed(message)
+        }
+    }
+
+    private func deletePassEntry(entryName: String, configuration: StoreConfiguration) throws {
+        let executablePath = try resolvedPassExecutablePath()
+        let process = Process()
+        let inputPipe = Pipe()
+        let outputPipe = Pipe()
+        let errorPipe = Pipe()
+
+        process.executableURL = URL(fileURLWithPath: executablePath)
+        process.arguments = ["remove", "-f", entryName]
+        process.standardInput = inputPipe
+        process.standardOutput = outputPipe
+        process.standardError = errorPipe
+
+        var environment = ProcessInfo.processInfo.environment
+        environment["PATH"] = executionPathEnvironment()
+        environment["HOME"] = currentUserHomeDirectoryPath()
+        environment["PASSWORD_STORE_DIR"] = configuration.url.path
+        environment["LANG"] = environment["LANG"] ?? "en_US.UTF-8"
+        process.environment = environment
+
+        do {
+            try process.run()
+        } catch {
+            throw PassError.executionFailed("Failed to run 'pass remove': \(error.localizedDescription)")
         }
 
         process.waitUntilExit()

@@ -216,6 +216,8 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
             return getEntryOTP(entryName: payload["entry"] as? String)
         case "updateEntry":
             return updateEntry(entryName: payload["entry"] as? String, content: payload["content"] as? String)
+        case "deleteEntry":
+            return deleteEntry(entryName: payload["entry"] as? String)
         case "copyText":
             return copyText(payload["text"] as? String)
         default:
@@ -385,6 +387,25 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
             var response = response(for: configuration)
             response["ok"] = true
             response["entry"] = normalizedEntryName
+            return response
+        } catch {
+            return errorResponse(for: error)
+        }
+    }
+
+    private func deleteEntry(entryName: String?) -> [String: Any] {
+        do {
+            let normalizedEntryName = try normalizedEntryName(from: entryName)
+            
+            let configuration = try resolvedStoreConfiguration()
+            let passResponse = try requestPassResponse(command: "deleteEntry", entryName: normalizedEntryName)
+
+            guard passResponse.ok else {
+                throw PassError.executionFailed(passResponse.errorMessage ?? "Unable to delete entry.")
+            }
+
+            var response = response(for: configuration)
+            response["ok"] = true
             return response
         } catch {
             return errorResponse(for: error)

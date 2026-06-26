@@ -62,6 +62,7 @@ const editUsernameInput = document.getElementById("edit-username-input");
 const editURLInput = document.getElementById("edit-url-input");
 const editStatusElement = document.getElementById("edit-status");
 const editContentTextarea = document.getElementById("edit-content");
+const deleteEditButton = document.getElementById("delete-edit");
 const cancelEditButton = document.getElementById("cancel-edit");
 const saveEditButton = document.getElementById("save-edit");
 const entriesHeaderTitle = document.getElementById("entries-header-title");
@@ -111,6 +112,7 @@ async function init() {
   autofillEntryButton.addEventListener("click", onAutofillEntryClick);
   closeDetailsButton.addEventListener("click", onCloseDetailsClicked);
   editEntryButton.addEventListener("click", openEditPanel);
+  deleteEditButton.addEventListener("click", onDeleteEntryClicked);
   cancelEditButton.addEventListener("click", onCloseEditClick);
   saveEditButton.addEventListener("click", onSaveEditClick);
   newEntryButton.addEventListener("click", onNewEntryClick);
@@ -124,7 +126,6 @@ async function init() {
 
   await refreshSetupSettingsUI();
 
-  renderEntryDetailsEmpty();
   await refreshStoreConfiguration();
   await loadEntries();
 
@@ -368,7 +369,6 @@ async function onEntryClick(entry, { preserveSearchFocus = false } = {}) {
   selectedEntry = entry;
   selectedEntryDetails = null;
   renderEntries();
-  renderEntryDetailsLoading(entry);
 
   if (preserveSearchFocus) {
     requestAnimationFrame(() => {
@@ -395,13 +395,26 @@ async function onEntryClick(entry, { preserveSearchFocus = false } = {}) {
     }
 
     selectedEntryDetails = response;
-    renderEntryDetails(response);
   } catch (error) {
     if (selectedEntry !== entry) {
       return;
     }
+  }
+}
 
-    renderEntryDetailsError(entry, error.message || "Unable to load entry details.");
+async function copyText(value) {
+  try {
+    const response = await sendNativeMessage({
+      command: "copyText",
+      text: value,
+    });
+
+    if (!response?.ok) {
+      throw new Error(response?.error || "Unable to copy value.");
+    }
+
+  } catch (error) {
+    setDetailStatus(error.message || "Unable to copy value.", true);
   }
 }
 
@@ -415,21 +428,7 @@ async function onCopyFieldClick(fieldName) {
     return;
   }
 
-  try {
-    const response = await sendNativeMessage({
-      command: "copyText",
-      text: value,
-    });
-
-    if (!response?.ok) {
-      throw new Error(response?.error || "Unable to copy value.");
-    }
-
-    setDetailStatus("");
-
-  } catch (error) {
-    setDetailStatus(error.message || "Unable to copy value.", true);
-  }
+  await copyText(value);
 }
 
 function onOpenURLClick() {
@@ -552,7 +551,7 @@ async function getEntryData(entry) {
     selectedEntryDetails = response;
 
   } catch (error) {
-    renderEntryDetailsError(entry, error.message || "Unable to load entry details.");
+    setDetailStatus(error.message || "Unable to load entry details.", true);
   }
 }
 
@@ -573,6 +572,9 @@ function openEditPanel() {
   detailPanelElement.hidden = true;
   editPanelElement.hidden = false;
   
+  deleteEditButton.textContent = "Delete";
+  deleteEditButton.dataset.confirmed = "";
+  
   editPasswordInput.setAttribute("type", "password");
   editTogglePasswordButton.innerHTML = editTogglePasswordButton.dataset.show_icon;
   editTogglePasswordButton.title = "Show password";
@@ -582,6 +584,9 @@ function openEditPanel() {
     editTitleInput.hidden = false;
     selectedEntry = null;
     selectedEntryDetails = null;
+    editPasswordInput.value = "";
+    editUsernameInput.value = "";
+    editURLInput.value = "";
     editContentTextarea.value = "";
     editTitleInput.value = "";
     editTitleInput.focus();
@@ -623,6 +628,55 @@ function openEditPanel() {
   if(!newEntry) {
     editContentTextarea.focus();
   }
+}
+
+async function onDeleteEntryClicked() {
+  if(!selectedEntry)
+    return;
+
+  if(deleteEditButton.dataset.confirmed === "confirmed") {
+    deleteEditButton.textContent = "Delete";
+    deleteEditButton.dataset.confirmed = "";
+    deleteEditButton.disabled = true;
+
+    setEditStatus("Deleting entry...");
+
+    try {
+      const response = await sendNativeMessage({
+        command: "deleteEntry",
+        entry: selectedEntry,
+      });
+
+      if (response?.storePath) {
+        applyStoreConfiguration(response);
+      }
+
+      if (!response?.ok) {
+        throw new Error(response?.error || "Unable to delete entry.");
+      }
+
+      selectedEntry = null;
+      selectedEntryDetails = null;
+
+      setEditStatus("Entry deleted successfully.");
+
+      // Close the edit panel and reload the entry details
+      setTimeout(() => {
+        closeEditPanel();
+      }, 800);
+
+    } catch (error) {
+      setEditStatus(error.message || "Unable to delete entry.", true);
+    }
+    finally {
+      deleteEditButton.disabled = false;
+    } 
+  }
+  else {
+    deleteEditButton.textContent = "Click again to delete!";
+    deleteEditButton.dataset.confirmed = "confirmed";
+  }
+
 }
 
 function onCloseEditClick() {
@@ -1525,42 +1579,6 @@ function updateAutofillButtonState() {
   autofillEntryButton.setAttribute("aria-keyshortcuts", "Meta+Enter Control+Enter");
 }
 
-function renderEntryDetailsEmpty() {
-  stopOTPRefreshLoop();
-  isPasswordVisible = false;
-  detailsTitleElement.textContent = "Entry details";
-  updatePasswordVisibility();
-  updateAutofillButtonState();
-  setDetailStatus("");
-}
-
-function renderEntryDetailsLoading(entry) {
-  stopOTPRefreshLoop();
-  isPasswordVisible = false;
-  detailsTitleElement.textContent = entry;
-  setDetailStatus("");
-
-  detailPasswordRowElement.hidden = true;
-  detailPasswordElement.textContent = "";
-  detailUsernameRowElement.hidden = true;
-  detailUsernameElement.textContent = "";
-  detailOTPRowElement.hidden = true;
-  detailOTPElement.textContent = "";
-  detailURLRowElement.hidden = true;
-  detailURLElement.textContent = "";
-  detailFieldsRowElement.hidden = true;
-  detailFieldsElement.replaceChildren();
-  detailNotesRowElement.hidden = true;
-  detailNotesElement.textContent = "";
-
-  copyPasswordButton.disabled = true;
-  copyUsernameButton.disabled = true;
-  copyOTPButton.disabled = true;
-  openURLButton.disabled = true;
-  updatePasswordVisibility();
-  updateAutofillButtonState();
-}
-
 function renderEntryDetails(details) {
   mainPanelElement.hidden = true;
   editPanelElement.hidden = true;
@@ -1622,7 +1640,7 @@ function renderEntryDetails(details) {
         button.className = "icon";
         button.title = "Copy value";
         button.append(icon_svg);
-        button.addEventListener("click", () => onCopyFieldClick(field.label));
+        button.addEventListener("click", () => copyText(field.value));
         action.append(button);
         body.append(action);
       }
@@ -1645,34 +1663,9 @@ function renderEntryDetails(details) {
   startOTPRefreshLoop();
 }
 
-function renderEntryDetailsError(entry, message) {
-  stopOTPRefreshLoop();
-  isPasswordVisible = false;
-  detailsTitleElement.textContent = entry;
-  setDetailStatus(message, true);
-
-  detailPasswordElement.textContent = "";
-  detailUsernameRowElement.hidden = true;
-  detailUsernameElement.textContent = "";
-  detailOTPRowElement.hidden = true;
-  detailOTPElement.textContent = "";
-  detailURLRowElement.hidden = true;
-  detailURLElement.textContent = "";
-  detailFieldsRowElement.hidden = true;
-  detailFieldsElement.replaceChildren();
-  detailNotesRowElement.hidden = true;
-  detailNotesElement.textContent = "";
-  copyPasswordButton.disabled = true;
-  copyUsernameButton.disabled = true;
-  copyOTPButton.disabled = true;
-  updatePasswordVisibility();
-  updateAutofillButtonState();
-}
-
 function clearSelectedEntry() {
   selectedEntry = null;
   selectedEntryDetails = null;
-  renderEntryDetailsEmpty();
 }
 
 function setStatus(message, isError = false) {

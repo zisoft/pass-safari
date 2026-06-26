@@ -31,7 +31,7 @@
             </div>
           </div>
           <div class="header-buttons">
-            <button id="new-entry" type="button" class="compact-button primary-button" title="New Entry">
+            <button id="new-entry" type="button" class="compact-button primary" title="New Entry">
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus-icon lucide-plus"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
             </button>
           </div>
@@ -62,7 +62,7 @@
           </div>
         </div>
 
-        <div class="panel-footer">
+        <div id="mail-panel-footer" class="panel-footer">
           <div id="status" class="status" role="status">Loading entries…</div>
         </div>
       </div>
@@ -121,12 +121,15 @@
         </div>
 
         <div class="panel-footer">
-          <div>
+          <div class="panel-actions">
+            <button id="delete-edit" type="button" class="compact-button danger">Delete</button>
+          </div>
+          <div class="panel-status">
             <div id="edit-status" class="status" role="status"></div>
           </div>
-          <div class="edit-actions">
+          <div class="panel-actions">
             <button id="cancel-edit" type="button" class="compact-button secondary">Cancel</button>
-            <button id="save-edit" type="button" class="compact-button primary-button">Save</button>
+            <button id="save-edit" type="button" class="compact-button primary">Save</button>
           </div>
         </div>
       </div>
@@ -147,15 +150,6 @@
         <div class="panel-content">
           <div class="detail-panel-content">
 
-            <div class="detail-actions">
-              <button id="close-details" type="button" class="compact-button secondary">Close</button>
-              <button id="autofill-entry" type="button" class="compact-button primary-button" title="Shortcut: Enter" aria-keyshortcuts="Enter">
-                Autofill
-              </button>
-              <button id="edit-entry" type="button" class="icon" title="Edit entry">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-pen-icon lucide-square-pen"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>
-              </button>
-            </div>
 
             <div class="detail-content">
 
@@ -229,7 +223,18 @@
         </div>
 
         <div class="panel-footer">
-          <div id="details-status" class="status" role="status"></div>
+          <div class="panel-status">
+            <div id="details-status" class="status" role="status"></div>
+          </div>
+          <div class="panel-actions">
+            <button id="close-details" type="button" class="compact-button secondary">Close</button>
+            <button id="autofill-entry" type="button" class="compact-button primary" title="Shortcut: Enter" aria-keyshortcuts="Enter">
+              Autofill
+            </button>
+            <button id="edit-entry" type="button" class="icon" title="Edit entry">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-pen-icon lucide-square-pen"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>
+            </button>
+          </div>
         </div>
       </div>
 
