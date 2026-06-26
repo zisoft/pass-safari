@@ -40,8 +40,7 @@ const detailOTPLabelElement = document.getElementById("detail-otp-label");
 const detailOTPElement = document.getElementById("detail-otp");
 const detailURLRowElement = document.getElementById("detail-url-row");
 const detailURLElement = document.getElementById("detail-url");
-const detailFieldsRowElement = document.getElementById("detail-fields-row");
-const detailFieldsElement = document.getElementById("detail-fields");
+const detailAdditionalFields = document.getElementById("detail-additional-fields");
 const detailNotesRowElement = document.getElementById("detail-notes-row");
 const detailNotesElement = document.getElementById("detail-notes");
 const copyPasswordButton = document.getElementById("copy-password");
@@ -1592,31 +1591,54 @@ function renderEntryDetails(details) {
   openURLButton.disabled = !url;
 
   const fields = Array.isArray(details.fields) ? details.fields : [];
-  detailFieldsElement.replaceChildren();
-  detailFieldsRowElement.hidden = fields.length === 0;
+  detailAdditionalFields.hidden = fields.length === 0;
+  detailAdditionalFields.replaceChildren();
+
   if (fields.length > 0) {
     const fieldItems = fields.map((field) => {
-      const item = document.createElement("li");
-      item.className = "detail-field";
 
-      const label = document.createElement("span");
-      label.className = "detail-field-label";
+      const div = document.createElement("div");
+      div.className = "detail-row";
+
+      const label = document.createElement("div");
+      label.className = "detail-label";
       label.textContent = field.label || "Field";
+      div.append(label);
 
-      const value = document.createElement("pre");
-      value.className = "detail-field-value";
+      const body = document.createElement("div");
+      body.className = "detail-body";
+      const value = document.createElement("div");
+      value.className = "detail-value";
       value.textContent = field.value || "";
+      body.append(value);
 
-      item.append(label, value);
-      return item;
+      const svg = document.getElementById("icon-copy");
+      if(svg) {
+        const icon_svg = svg.cloneNode(true);
+        icon_svg.id = null;
+        const action = document.createElement("div");
+        action.className = "detail-action";
+        const button = document.createElement("button");
+        button.className = "icon";
+        button.title = "Copy value";
+        button.append(icon_svg);
+        button.addEventListener("click", () => onCopyFieldClick(field.label));
+        action.append(button);
+        body.append(action);
+      }
+
+      div.append(body);
+
+      return div;
     });
 
-    detailFieldsElement.append(...fieldItems);
+    detailAdditionalFields.append(...fieldItems);
   }
 
   const notes = typeof details.notes === "string" ? details.notes : "";
   detailNotesRowElement.hidden = !notes;
   detailNotesElement.textContent = notes;
+
   updatePasswordVisibility();
   updateAutofillButtonState();
   updateOTPLabel(details);

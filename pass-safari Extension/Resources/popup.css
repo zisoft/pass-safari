@@ -368,20 +368,8 @@ input[type="search"]::placeholder {
   flex: 0;
 }
 
-.detail-stack {
-  margin-top: 0.5em
-}
-
 .detail-value-shell {
   position: relative;
-}
-
-.detail-fields {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  border: 1px solid var(--line-color);
-  border-radius: 0.4em;
 }
 
 .detail-field {
