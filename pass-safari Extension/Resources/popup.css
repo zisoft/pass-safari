@@ -1,6 +1,6 @@
 :root {
   --background-color: #ffffff;
-  --textcolor: #222222;
+  --textcolor: #444444;
   --subtextcolor: #999999;
   --accent-color: #007aff;
   --accent-textcolor: #eeeeee;
@@ -12,8 +12,8 @@
 @media (prefers-color-scheme: dark) {
   :root {
 	--background-color: #1e1e1e;
-	--subtextcolor: #999999;
 	--textcolor: #f5f5f7;
+	--subtextcolor: #999999;
 	--accent-color: #007aff;
 	--accent-textcolor: #eeeeee;
 	--line-color: #cccccc;
@@ -73,10 +73,11 @@ body {
 
 .icon-text-text {
   flex: 1 1 auto;
+  display: flex;
 }
 
 .icon-text-text input {
-  width: 90%;
+  flex: 1 1 auto;
   font-size: 0.9em;
   margin-top: 0.5em;
 }
@@ -97,8 +98,9 @@ body {
   flex: 0 0 1.2em;
   padding: 0.5em;
   border-top: 1px solid var(--line-color);
+  display: flex;
+  justify-content: space-between;
 }
-
 
 .subtitle {
   font-size: 0.8em;
@@ -115,6 +117,7 @@ body {
 }
 
 .status {
+  flex: 1 1 auto;
   font-size: 0.8em;
   color: var(--subtextcolor);
 }
@@ -157,7 +160,7 @@ input[type="search"]::placeholder {
   flex-direction: column;
   min-height: 0;
   max-height: 10em;
-  margin-bottom: 0.5em;
+  margin-bottom: 1em;
 }
 
 .suggestions-area label,
@@ -175,8 +178,8 @@ input[type="search"]::placeholder {
 
 .entries-header {
   display: flex;
+  align-items: baseline;
   gap: 0.8em;
-  font-size: 0.8em;
   padding: 0 0.5em;
 }
 
@@ -185,6 +188,7 @@ input[type="search"]::placeholder {
 }
 
 .entries-header-counter {
+  font-size: 0.8em;
   color: var(--subtextcolor);
 }
 
@@ -205,22 +209,29 @@ input[type="search"]::placeholder {
   padding: 0.3em 0;
 }
 
-.entry-text {
-  font-size: 0.8em;
-}
-
 .entry-text:hover {
   color: var(--accent-color);
 }
 
+.entry-folder {
+  font-size: 0.8em;
+  color: var(--subtextcolor);
+}
+
+.entry-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .entry-buttons {
   display: flex;
-  gap: 0.1em;
+  gap: 0.3em;
 }
 
 .entry-icon svg {
-  width: 1em;
-  height: 1em;
+  width: 1.4em;
+  height: 1.4em;
 }
 
 .entry-icon:hover {
@@ -337,13 +348,14 @@ input[type="search"]::placeholder {
 
 .detail-value {
   flex: 1 1 auto;
+  min-height: 1em;
   margin: 0;
   padding: 0.4em 0.5em;
   border: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
   border-radius: 0.2em;
   background: color-mix(in srgb, Canvas 92%, CanvasText 8%);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
+  font-size: 0.8em;
   word-break: break-word;
 }
 
@@ -357,7 +369,7 @@ input[type="search"]::placeholder {
 }
 
 .detail-stack {
-  margin-top: 10px;
+  margin-top: 0.5em
 }
 
 .detail-value-shell {
@@ -368,29 +380,29 @@ input[type="search"]::placeholder {
   margin: 0;
   padding: 0;
   list-style: none;
-  border: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
-  border-radius: 8px;
+  border: 1px solid var(--line-color);
+  border-radius: 0.4em;
 }
 
 .detail-field {
-  padding: 7px 9px;
+  padding: 0.5em;
 }
 
 .detail-field + .detail-field {
-  border-top: 1px solid color-mix(in srgb, CanvasText 10%, transparent);
+  border-top: 1px solid var(--line-color);
 }
 
 .detail-field-label {
   display: block;
-  margin-bottom: 3px;
-  font-size: 10px;
+  margin-bottom: 0.2em;
+  font-size: 0.8em;
   font-weight: 600;
 }
 
 .detail-field-value {
   margin: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
+  font-size: 0.8em;
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -485,11 +497,10 @@ input[type="search"]::placeholder {
 
 button {
   border: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
-  border-radius: 8px;
-  padding: 6px 0;
+  border-radius: 0.4em;
+  padding: 0.3em 0.1em;
   font: inherit;
   font-size: 0.8em;
-  line-height: 1.2;
   background: color-mix(in srgb, Canvas 94%, CanvasText 6%);
   color: inherit;
   transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease, color 120ms ease;
@@ -593,7 +604,7 @@ button:disabled {
 
 .field-icon-button {
   position: absolute;
-  top: 50%;
+  top: 0.7em;
   right: 0;
   transform: translateY(-50%);
   width: 22px;
@@ -613,7 +624,7 @@ button:disabled {
 
 .field-icon-button:focus-visible {
   outline: none;
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, #0a84ff 30%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent-color) 0a84ff 30%, transparent);
 }
 
 code {
@@ -621,23 +632,8 @@ code {
   font-size: 11px;
 }
 
-/* Edit panel */
-.edit-panel {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 600px;
-  background: Canvas;
-  z-index: 100;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.edit-panel[hidden] {
-  display: none;
+.edit-panel-content {
+  padding: 0.5em;
 }
 
 .edit-header {
@@ -648,15 +644,19 @@ code {
   border-bottom: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
 }
 
-.edit-header h2 {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
+.edit-row {
+  margin-bottom: 0.5em;
 }
 
-.edit-title {
-  font-size: 1em;
-  font-weight: 600;
+.edit-value {
+  display: flex;
+  gap: 0.5em;
+}
+
+.edit-value input {
+  flex: 1 1 auto;
+  font-size: 0.8em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 .edit-body {
@@ -664,7 +664,6 @@ code {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 0.5em;
 }
 
 .edit-textarea {
@@ -688,9 +687,9 @@ code {
 }
 
 .edit-actions {
+  flex: 0 0 auto;
   display: flex;
   gap: 0.5em;
-  justify-content: flex-end;
 }
 
 .edit-panel .status {

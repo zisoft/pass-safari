@@ -31,6 +31,7 @@ const recordShortcutButton = document.getElementById("record-shortcut");
 const resetShortcutButton = document.getElementById("reset-shortcut");
 const detailsTitleElement = document.getElementById("details-title");
 const detailsStatusElement = document.getElementById("details-status");
+const detailPasswordRowElement = document.getElementById("detail-password-row");
 const detailPasswordElement = document.getElementById("detail-password");
 const detailUsernameRowElement = document.getElementById("detail-username-row");
 const detailUsernameElement = document.getElementById("detail-username");
@@ -55,11 +56,16 @@ const mainPanelElement = document.getElementById("main-panel");
 const editPanelElement = document.getElementById("edit-panel");
 const detailPanelElement = document.getElementById("detail-panel");
 const editTitleElement = document.getElementById("edit-title");
-const editTitleInput= document.getElementById("edit-title-input");
+const editTitleInput = document.getElementById("edit-title-input");
+const editPasswordInput = document.getElementById("edit-password-input");
+const editTogglePasswordButton = document.getElementById("edit-toggle-password");
+const editUsernameInput = document.getElementById("edit-username-input");
+const editURLInput = document.getElementById("edit-url-input");
 const editStatusElement = document.getElementById("edit-status");
 const editContentTextarea = document.getElementById("edit-content");
 const cancelEditButton = document.getElementById("cancel-edit");
 const saveEditButton = document.getElementById("save-edit");
+const entriesHeaderTitle = document.getElementById("entries-header-title");
 const entriesCounter = document.getElementById("entries-counter");
 const suggestionsCounter = document.getElementById("suggestions-counter");
 const newEntryButton = document.getElementById("new-entry");
@@ -109,6 +115,7 @@ async function init() {
   cancelEditButton.addEventListener("click", onCloseEditClick);
   saveEditButton.addEventListener("click", onSaveEditClick);
   newEntryButton.addEventListener("click", onNewEntryClick);
+  editTogglePasswordButton.addEventListener("click", onEditTogglePasswordClick);
 
   try {
     await refreshActiveTabContext();
@@ -420,11 +427,7 @@ async function onCopyFieldClick(fieldName) {
     }
 
     setDetailStatus("");
-    const feedbackButton = fieldName === "password"
-      ? copyPasswordButton
-      : fieldName === "username"
-        ? copyUsernameButton
-        : copyOTPButton;
+
   } catch (error) {
     setDetailStatus(error.message || "Unable to copy value.", true);
   }
@@ -451,6 +454,20 @@ function onTogglePasswordClick() {
 
   isPasswordVisible = !isPasswordVisible;
   updatePasswordVisibility();
+}
+
+function onEditTogglePasswordClick() {
+  const type = editPasswordInput.getAttribute("type");
+  if(type == "password") {
+    editPasswordInput.setAttribute("type", "text");
+    editTogglePasswordButton.innerHTML = editTogglePasswordButton.dataset.hide_icon;
+    editTogglePasswordButton.title = "Hide password";
+  }
+  else {
+    editPasswordInput.setAttribute("type", "password");
+    editTogglePasswordButton.innerHTML = editTogglePasswordButton.dataset.show_icon;
+    editTogglePasswordButton.title = "Show password";
+  }
 }
 
 async function ensureFreshOTPBeforeAutofill() {
@@ -556,6 +573,10 @@ function openEditPanel() {
   mainPanelElement.hidden = true;
   detailPanelElement.hidden = true;
   editPanelElement.hidden = false;
+  
+  editPasswordInput.setAttribute("type", "password");
+  editTogglePasswordButton.innerHTML = editTogglePasswordButton.dataset.show_icon;
+  editTogglePasswordButton.title = "Show password";
 
   if(newEntry) {
     editTitleElement.hidden = true;
@@ -572,10 +593,33 @@ function openEditPanel() {
     editTitleInput.hidden = true;
   }
 
-  setEditStatus("");
+  const password = typeof selectedEntryDetails.password === "string" ? selectedEntryDetails.password : "";
+  editPasswordInput.value = password;
 
-  // use the entrie's raw text block
-  editContentTextarea.value = selectedEntryDetails.output;
+  const username = typeof selectedEntryDetails.username === "string" ? selectedEntryDetails.username : "";
+  editUsernameInput.value = username;
+
+  const url = typeof selectedEntryDetails.url === "string" ? selectedEntryDetails.url : "";
+  editURLInput.value = url;
+
+  // Add custom fields
+  const lines = [];
+  if (Array.isArray(selectedEntryDetails.fields)) {
+    for (const field of selectedEntryDetails.fields) {
+      if (field.label && field.value) {
+        lines.push(`${field.label}: ${field.value}`);
+      }
+    }
+  }
+
+  // Add notes if present
+  if (selectedEntryDetails.notes) {
+    lines.push(selectedEntryDetails.notes);
+  }
+
+  editContentTextarea.value = lines.join("\n");
+
+  setEditStatus("");
 
   if(!newEntry) {
     editContentTextarea.focus();
@@ -611,7 +655,18 @@ async function onSaveEditClick() {
     }
   }
 
-  const content = editContentTextarea.value;
+  const password = editPasswordInput.value;
+  const username = editUsernameInput.value;
+  const url = editURLInput.value;
+
+  let content = `${password}\n`;
+  if(username !== "")
+    content += `username: ${username}\n`;
+  if(url !== "")
+    content += `url: ${url}\n`;
+
+  content += `${editContentTextarea.value}`;
+
   if (!content.trim()) {
     setEditStatus("Entry content cannot be empty.", true);
     return;
@@ -719,14 +774,8 @@ async function refreshURLIndexStatus() {
       ? response.suggestedEntries[0]
       : null;
 
-    if (!selectedEntry && indexedSuggestedEntry) {
-      setStatus(`Suggesting ${indexedSuggestedEntry} for ${currentTabDisplayHost()}.`);
-      await onEntryClick(indexedSuggestedEntry);
-      return;
-    }
-    else {
-      setStatus("");
-    }
+    setStatus("");
+
   } catch {
     scheduleURLIndexStatusPoll(8000);
   }
@@ -754,9 +803,6 @@ async function loadEntries() {
     allEntries = Array.isArray(response.entries) ? response.entries : [];
     allSuggestions = Array.isArray(response.suggestedEntries) ? response.suggestedEntries : [];
 
-    entriesCounter.textContent = `${allEntries.length}`
-    suggestionsCounter.textContent = `${allSuggestions.length}`
-
     if (selectedEntry && !allEntries.includes(selectedEntry)) {
       clearSelectedEntry();
     }
@@ -774,14 +820,13 @@ async function loadEntries() {
     const fallbackSuggestedEntry = bestMatchingEntryForCurrentTab(allEntries);
     const suggestedEntry = selectedEntry ? null : (indexedSuggestedEntry || fallbackSuggestedEntry);
 
-    if (suggestedEntry) {
-      setStatus(`Suggesting ${suggestedEntry} for ${currentTabDisplayHost()}.`);
-    } else if (response?.urlIndexRefreshing) {
+    if (response?.urlIndexRefreshing) {
       setStatus(` Building the site index in the background…`);
       scheduleURLIndexStatusPoll();
     } else {
       setStatus("");
     }
+
   } catch (error) {
     allEntries = [];
     clearSelectedEntry();
@@ -942,7 +987,17 @@ function createEntry(entry) {
 
   const text_div = document.createElement("div");
   text_div.className = "entry-text";
-  text_div.append(document.createTextNode(entry));
+  const path_components = entry.split("/");
+  const entry_name = path_components.pop();
+  const entry_folder = path_components.join("/");
+  const folder_div = document.createElement("div");
+  folder_div.className = "entry-folder";
+  folder_div.append(document.createTextNode(entry_folder));
+  text_div.append(folder_div);
+  const name_div = document.createElement("div");
+  name_div.className = "entry-name";
+  name_div.append(document.createTextNode(entry_name));
+  text_div.append(name_div);
   text_div.title = "Click to autofill form";
   text_div.dataset.entry = entry;
   text_div.addEventListener("click", onEntryTitleClick);
@@ -951,10 +1006,10 @@ function createEntry(entry) {
   const entry_buttons_div = document.createElement("div");
   entry_buttons_div.className = "entry-buttons";
 
-  createEntryIcon(entry,"icon-show",entry_buttons_div,"Show entry",onShowEntryClick);
-  createEntryIcon(entry,"icon-link",entry_buttons_div,"Open URL",openURLClicked);
   createEntryIcon(entry,"icon-user",entry_buttons_div,"Copy username",onCopyUsernameClicked);
   createEntryIcon(entry,"icon-password",entry_buttons_div,"Copy password",onCopyPasswordClick);
+  createEntryIcon(entry,"icon-link",entry_buttons_div,"Open URL",openURLClicked);
+  createEntryIcon(entry,"icon-show",entry_buttons_div,"Show entry",onShowEntryClick);
   createEntryIcon(entry,"icon-edit",entry_buttons_div,"Edit entry",onEditEntryClick);
 
   item.append(entry_buttons_div);
@@ -1042,20 +1097,24 @@ function renderEntries() {
   entriesElement.replaceChildren();
   suggestionsElement.replaceChildren();
 
-  suggestionsArea.hidden = allSuggestions.length === 0;
+  const searchText = searchInput.value.trim();
+
+  suggestionsArea.hidden = allSuggestions.length === 0 || searchText !== "";
   const suggestionItems = allSuggestions.map((entry) => createEntry(entry));
   suggestionsElement.append(...suggestionItems);
-
-  if (filteredEntries.length === 0) {
-    const emptyState = document.createElement("li");
-    emptyState.className = "empty-state";
-    emptyState.textContent = searchInput.value.trim() ? "No matching entries." : "No entries available.";
-    entriesElement.append(emptyState);
-    return;
-  }
+  suggestionsCounter.textContent = `${allSuggestions.length}`
 
   const items = filteredEntries.map((entry) => createEntry(entry));
   entriesElement.append(...items);
+
+  if(searchText !== "") {
+    entriesHeaderTitle.textContent = "Matched entries";
+    entriesCounter.textContent = `${items.length}`
+  }
+  else {
+    entriesHeaderTitle.textContent = "Entries";
+    entriesCounter.textContent = `${allEntries.length}`
+  }
 
   if (activeEntry) {
     focusEntryButtonByEntryName(activeEntry) || focusEntryButtonByEntryName(selectedEntry) || focusEntryButtonAtIndex(0);
@@ -1482,6 +1541,7 @@ function renderEntryDetailsLoading(entry) {
   detailsTitleElement.textContent = entry;
   setDetailStatus("");
 
+  detailPasswordRowElement.hidden = true;
   detailPasswordElement.textContent = "";
   detailUsernameRowElement.hidden = true;
   detailUsernameElement.textContent = "";
@@ -1512,6 +1572,8 @@ function renderEntryDetails(details) {
   detailsTitleElement.textContent = details.entry || selectedEntry || "Entry details";
   setDetailStatus("");
 
+  const password = typeof details.password === "string" ? details.password : "";
+  detailPasswordRowElement.hidden = !password;
   copyPasswordButton.disabled = !(details.password || "").length;
 
   const username = typeof details.username === "string" ? details.username : "";
