@@ -1,3 +1,5 @@
+const tabsAPI = typeof browser !== 'undefined' ? browser.tabs : chrome.tabs;
+
 const NATIVE_APP_IDS = [
   "de.zisoft.pass-safari",
   "de.zisoft.pass-safari.Extension",
@@ -70,6 +72,24 @@ const entriesCounter = document.getElementById("entries-counter");
 const suggestionsCounter = document.getElementById("suggestions-counter");
 const newEntryButton = document.getElementById("new-entry");
 
+// Password generator
+const passwordLengthNum = document.getElementById("password-length-num");
+const passwordLengthSlider = document.getElementById("password-length-slider");
+const passwordCheckUpper = document.getElementById("password-check-upper");
+const passwordCheckLower = document.getElementById("password-check-lower");
+const passwordCheckNumbers = document.getElementById("password-check-numbers");
+const passwordCheckSpecial = document.getElementById("password-check-special");
+const passwordGenerateButton = document.getElementById("password-generate-button");
+const passwordAlert = document.getElementById("password-alert");
+
+const SETS = {
+  upper:   'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+  lower:   'abcdefghijklmnopqrstuvwxyz',
+  numbers: '0123456789',
+  special: '!@#$%^&*()_+-=[]{}|;:,.<>?'
+};
+
+
 const buttonFeedbackResetHandles = new WeakMap();
 
 let allEntries = [];
@@ -117,6 +137,12 @@ async function init() {
   saveEditButton.addEventListener("click", onSaveEditClick);
   newEntryButton.addEventListener("click", onNewEntryClick);
   editTogglePasswordButton.addEventListener("click", onEditTogglePasswordClick);
+
+  passwordLengthSlider.addEventListener('input', function () {
+    passwordLengthNum.textContent = passwordLengthSlider.value;
+  });
+
+  passwordGenerateButton.addEventListener("click", generatePassword);
 
   try {
     await refreshActiveTabContext();
@@ -579,6 +605,8 @@ function openEditPanel() {
   editTogglePasswordButton.innerHTML = editTogglePasswordButton.dataset.show_icon;
   editTogglePasswordButton.title = "Show password";
 
+  passwordAlert.hidden = true;
+
   if(newEntry) {
     editTitleElement.hidden = true;
     editTitleInput.hidden = false;
@@ -590,6 +618,17 @@ function openEditPanel() {
     editContentTextarea.value = "";
     editTitleInput.value = "";
     editTitleInput.focus();
+
+    // prefill URL with current tab's URL
+    tabsAPI.query({ active: true, lastFocusedWindow: true }, tabs => {
+      const url = tabs[0].url;
+      if (!url.startsWith('favorites://') && !url.startsWith('safari-')) {
+        editURLInput.value = url;
+      }
+    });
+
+    // generate password for the new entry
+    generatePassword();
   }
   else {
     editTitleElement.textContent = `${selectedEntry}`;
@@ -597,31 +636,34 @@ function openEditPanel() {
     editTitleInput.hidden = true;
   }
 
-  const password = typeof selectedEntryDetails.password === "string" ? selectedEntryDetails.password : "";
-  editPasswordInput.value = password;
+  if(selectedEntryDetails) {
+    const password = typeof selectedEntryDetails.password === "string" ? selectedEntryDetails.password : "";
+    editPasswordInput.value = password;
 
-  const username = typeof selectedEntryDetails.username === "string" ? selectedEntryDetails.username : "";
-  editUsernameInput.value = username;
+    const username = typeof selectedEntryDetails.username === "string" ? selectedEntryDetails.username : "";
+    editUsernameInput.value = username;
 
-  const url = typeof selectedEntryDetails.url === "string" ? selectedEntryDetails.url : "";
-  editURLInput.value = url;
+    const url = typeof selectedEntryDetails.url === "string" ? selectedEntryDetails.url : "";
+    editURLInput.value = url;
 
-  // Add custom fields
-  const lines = [];
-  if (Array.isArray(selectedEntryDetails.fields)) {
-    for (const field of selectedEntryDetails.fields) {
-      if (field.label && field.value) {
-        lines.push(`${field.label}: ${field.value}`);
+    // Add custom fields
+    const lines = [];
+    if (Array.isArray(selectedEntryDetails.fields)) {
+      for (const field of selectedEntryDetails.fields) {
+        if (field.label && field.value) {
+          lines.push(`${field.label}: ${field.value}`);
+        }
       }
     }
+
+    // Add notes if present
+    if (selectedEntryDetails.notes) {
+      lines.push(selectedEntryDetails.notes);
+    }
+
+    editContentTextarea.value = lines.join("\n");
   }
 
-  // Add notes if present
-  if (selectedEntryDetails.notes) {
-    lines.push(selectedEntryDetails.notes);
-  }
-
-  editContentTextarea.value = lines.join("\n");
 
   setEditStatus("");
 
@@ -1788,3 +1830,52 @@ function onNewEntryClick() {
   openEditPanel();
 }
 
+
+// Password generator
+// https://github.com/daniausman24-bot/password-generator/tree/main
+function generatePassword() {
+  const length = passwordLengthSlider.value;
+
+  let charset = '';
+  if (passwordCheckUpper.checked)   charset += SETS.upper;
+  if (passwordCheckLower.checked)   charset += SETS.lower;
+  if (passwordCheckNumbers.checked) charset += SETS.numbers;
+  if (passwordCheckSpecial.checked) charset += SETS.special;
+
+  if (!charset) {
+    passwordAlert.hidden = false;
+    return;
+  }
+
+  const checks = {
+    upper:   passwordCheckUpper,
+    lower:   passwordCheckLower,
+    numbers: passwordCheckNumbers,
+    special: passwordCheckSpecial
+  };
+
+  const selected = Object.entries(checks)
+    .filter(function([, cb]) { return cb.checked; })
+    .map(function([key]) { return SETS[key]; });
+
+  passwordAlert.hidden = true;
+
+  const mandatory = selected.map(function(s) {
+    return s[Math.floor(Math.random() * s.length)];
+  });
+
+  const remaining = Array.from({ length: length - mandatory.length }, function() {
+    return charset[Math.floor(Math.random() * charset.length)];
+  });
+
+  // Shuffle all characters
+  const all = mandatory.concat(remaining);
+  for (let i = all.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const temp = all[i];
+    all[i] = all[j];
+    all[j] = temp;
+  }
+
+  editPasswordInput.value = all.join('');
+}

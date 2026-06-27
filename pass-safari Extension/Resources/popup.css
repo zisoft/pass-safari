@@ -405,6 +405,54 @@ input[type="search"]::placeholder {
   word-break: break-word;
 }
 
+.password-generator {
+  border: 1px solid var(--line-color);
+  border-radius: 0.2em;
+  padding: 0.5em;
+}
+
+.password-generator-settings {
+  display: flex;
+  gap: 1em;
+  margin-bottom: 0.5em;
+}
+
+.password-length {
+  flex: 0 0 10em;
+}
+
+.password-length-slider-area {
+  display: flex;
+}
+
+.password-length-slider {
+  flex: 1 1 auto;
+}
+
+.password-generator-options-area {
+  flex: 1 1 auto;
+}
+
+.password-generator-options {
+  display: flex;
+  justify-content: space-between;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8em;
+}
+
+.password-generator-button-area {
+  display: flex;
+  gap: 1em;
+  align-items: center;
+}
+
+.password-alert {
+  font-size: 0.8em;
+  color: var(--error-color);
+}
+
+
+
 .setup-header h2 {
   margin: 0;
   font-size: 13px;

@@ -13,7 +13,7 @@ function handleUrlChange(url, tabId) {
         return;
     }
     
-    setBagdeCountForTab(url, tabId);
+    setBadgeCountForTab(url, tabId);
 }
 
 tabsAPI.onUpdated.addListener((tabId, changeInfo, tab) => {
@@ -38,7 +38,7 @@ browser.runtime.onMessage.addListener((request, sender) => {
     return undefined;
 });
 
-async function setBagdeCountForTab(pageURL, tabId) {
+async function setBadgeCountForTab(pageURL, tabId) {
     const listResponse = await sendNativeMessage({
         command: "listEntries",
         pageURL,

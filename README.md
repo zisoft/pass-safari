@@ -195,3 +195,5 @@ MIT — see [LICENSE](LICENSE).
 ## Credits
 
 - Built for [pass](https://www.passwordstore.org/) by Jason A. Donenfeld
+- [Password generator](https://github.com/daniausman24-bot/password-generator) by Dania Usman 
+
