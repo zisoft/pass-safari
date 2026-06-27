@@ -409,27 +409,20 @@ input[type="search"]::placeholder {
   border: 1px solid var(--line-color);
   border-radius: 0.2em;
   padding: 0.5em;
+  font-size: 0.8em;
 }
 
-.password-generator-settings {
+.password-options-row {
   display: flex;
-  gap: 1em;
+  justify-content: space-between;
   margin-bottom: 0.5em;
 }
 
-.password-length {
-  flex: 0 0 10em;
+.password-options-col1 {
+  flex: 0 0 45%;
 }
 
-.password-length-slider-area {
-  display: flex;
-}
-
-.password-length-slider {
-  flex: 1 1 auto;
-}
-
-.password-generator-options-area {
+.password-options-col2 {
   flex: 1 1 auto;
 }
 
@@ -441,14 +434,17 @@ input[type="search"]::placeholder {
 }
 
 .password-generator-button-area {
-  display: flex;
-  gap: 1em;
-  align-items: center;
+  text-align: right;
 }
 
 .password-alert {
   font-size: 0.8em;
   color: var(--error-color);
+}
+
+.password-generator-additional-options {
+  display: flex;
+  justify-content: space-between;
 }
 
 
@@ -725,7 +721,7 @@ code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.8em;
   line-height: 1.5;
-  resize: vertical;
+  resize: none;
 }
 
 .edit-textarea:focus {

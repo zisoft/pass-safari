@@ -73,24 +73,24 @@ const suggestionsCounter = document.getElementById("suggestions-counter");
 const newEntryButton = document.getElementById("new-entry");
 
 // Password generator
-const passwordLengthNum = document.getElementById("password-length-num");
-const passwordLengthSlider = document.getElementById("password-length-slider");
+const passwordLength = document.getElementById("password-length");
 const passwordCheckUpper = document.getElementById("password-check-upper");
 const passwordCheckLower = document.getElementById("password-check-lower");
 const passwordCheckNumbers = document.getElementById("password-check-numbers");
 const passwordCheckSpecial = document.getElementById("password-check-special");
+const passwordAvoidAmbigous = document.getElementById("password-avoid-ambigous");
+const passwordMinDigits = document.getElementById("password-min-digits");
+const passwordMinSpecialChars = document.getElementById("password-min-special-chars");
 const passwordGenerateButton = document.getElementById("password-generate-button");
-const passwordAlert = document.getElementById("password-alert");
 
-const SETS = {
-  upper:   'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
-  lower:   'abcdefghijklmnopqrstuvwxyz',
-  numbers: '0123456789',
-  special: '!@#$%^&*()_+-=[]{}|;:,.<>?'
-};
+passwordCheckUpper.addEventListener("change", checkPasswordLengthSettings);
+passwordCheckLower.addEventListener("change", checkPasswordLengthSettings);
+passwordCheckNumbers.addEventListener("change", checkPasswordLengthSettings);
+passwordCheckSpecial.addEventListener("change", checkPasswordLengthSettings);
+passwordLength.addEventListener("change", checkPasswordLengthSettings);
+passwordMinDigits.addEventListener("change", checkPasswordLengthSettings);
+passwordMinSpecialChars.addEventListener("change", checkPasswordLengthSettings);
 
-
-const buttonFeedbackResetHandles = new WeakMap();
 
 let allEntries = [];
 let allSuggestions = [];
@@ -137,11 +137,6 @@ async function init() {
   saveEditButton.addEventListener("click", onSaveEditClick);
   newEntryButton.addEventListener("click", onNewEntryClick);
   editTogglePasswordButton.addEventListener("click", onEditTogglePasswordClick);
-
-  passwordLengthSlider.addEventListener('input', function () {
-    passwordLengthNum.textContent = passwordLengthSlider.value;
-  });
-
   passwordGenerateButton.addEventListener("click", generatePassword);
 
   try {
@@ -604,8 +599,6 @@ function openEditPanel() {
   editPasswordInput.setAttribute("type", "password");
   editTogglePasswordButton.innerHTML = editTogglePasswordButton.dataset.show_icon;
   editTogglePasswordButton.title = "Show password";
-
-  passwordAlert.hidden = true;
 
   if(newEntry) {
     editTitleElement.hidden = true;
@@ -1830,39 +1823,83 @@ function onNewEntryClick() {
   openEditPanel();
 }
 
+function checkPasswordLengthSettings() {
+  const length = parseInt(passwordLength.value);
+  const minDigits = parseInt(passwordMinDigits.value);
+  const minSpecials = parseInt(passwordMinSpecialChars.value);
 
-// Password generator
+  let minRequiredLength = 0;
+  minRequiredLength += passwordCheckUpper.checked ? 1 : 0;
+  minRequiredLength += passwordCheckLower.checked ? 1 : 0;
+  minRequiredLength += passwordCheckNumbers.checked ? minDigits : 0;
+  minRequiredLength += passwordCheckSpecial.checked ? minSpecials : 0;
+
+  if(length < minRequiredLength) {
+    passwordLength.value = minRequiredLength;
+  }
+}
+
+// Password generator, based on
 // https://github.com/daniausman24-bot/password-generator/tree/main
 function generatePassword() {
-  const length = passwordLengthSlider.value;
+  const length = passwordLength.value;
 
-  let charset = '';
-  if (passwordCheckUpper.checked)   charset += SETS.upper;
-  if (passwordCheckLower.checked)   charset += SETS.lower;
-  if (passwordCheckNumbers.checked) charset += SETS.numbers;
-  if (passwordCheckSpecial.checked) charset += SETS.special;
-
-  if (!charset) {
-    passwordAlert.hidden = false;
+  if (!passwordCheckUpper.checked &&
+      !passwordCheckLower.checked &
+      !passwordCheckNumbers.checked &&
+      !passwordCheckSpecial.checked) {
+    setEditStatus("Please check at least one character type", true);
     return;
   }
 
-  const checks = {
-    upper:   passwordCheckUpper,
-    lower:   passwordCheckLower,
-    numbers: passwordCheckNumbers,
-    special: passwordCheckSpecial
-  };
+  let upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  if(!passwordAvoidAmbigous.checked) {
+    upper += "OI";
+  }
 
-  const selected = Object.entries(checks)
-    .filter(function([, cb]) { return cb.checked; })
-    .map(function([key]) { return SETS[key]; });
+  let lower = 'abcdefghijkmnpqrstuvwxyz';
+  if(!passwordAvoidAmbigous.checked) {
+    lower += "ol";
+  }
 
-  passwordAlert.hidden = true;
+  let numbers = "23456789";
+  if(!passwordAvoidAmbigous.checked) {
+    numbers += "01";
+  }
+  
+  let special = "!@#$%^&*()_+-=[]{};:,.<>?";
+  if(!passwordAvoidAmbigous.checked) {
+    special += "|";
+  }
 
-  const mandatory = selected.map(function(s) {
-    return s[Math.floor(Math.random() * s.length)];
-  });
+  let charset = [];
+  const mandatory = [];
+
+  if(passwordCheckUpper.checked) {
+    charset += upper;
+    mandatory.push(upper[Math.floor(Math.random() * upper.length)]);
+  }
+
+  if(passwordCheckLower.checked) {
+    charset += lower;
+    mandatory.push(lower[Math.floor(Math.random() * lower.length)]);
+  }
+
+  if(passwordCheckNumbers.checked) {
+    charset += numbers;
+    for(let i = 0; i < passwordMinDigits.value; ++i) {
+      mandatory.push(numbers[Math.floor(Math.random() * numbers.length)]);
+    }
+  }
+
+  if(passwordCheckSpecial.checked) {
+    charset += special;
+    for(let i = 0; i < passwordMinSpecialChars.value; ++i) {
+      mandatory.push(special[Math.floor(Math.random() * special.length)]);
+    }
+  }
+
+  setEditStatus("");
 
   const remaining = Array.from({ length: length - mandatory.length }, function() {
     return charset[Math.floor(Math.random() * charset.length)];
