@@ -8,7 +8,8 @@
 import Cocoa
 import Darwin
 
-private let sharedContainerDirectoryName = ".pass-safari"
+private let appGroupIdentifier = "group.de.zisoft.pass-safari"
+private let sharedContainerDirectoryName = "pass-safari"
 private let storeBookmarkKey = "PasswordStoreBookmark"
 private let storePathKey = "PasswordStorePath"
 private let storeSelectionFileName = "PasswordStoreSelection.plist"
@@ -580,13 +581,32 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return containerURL
     }
 
-    private func baseDirectoryURL(for kind: SharedContainerKind) -> URL {
-        // Use ~/.pass-safari for both cache and state in all environments
-        return URL(fileURLWithPath: currentUserHomeDirectoryPath(), isDirectory: true)
-            .appendingPathComponent(sharedContainerDirectoryName, isDirectory: true)
+    func getSharedCacheDirectory() -> URL? {
+        let fileManager = FileManager.default
+        
+        guard let groupURL = fileManager.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
+            print("Error: Could not load AppGroup. Check Xcode capabilities.")
+            return nil
+        }
+        
+        let cacheURL = groupURL.appendingPathComponent("Library/Caches", isDirectory: true)
+        let myDirURL = cacheURL.appendingPathComponent(sharedContainerDirectoryName, isDirectory: true)
+        
+        if !fileManager.fileExists(atPath: myDirURL.path) {
+            do {
+                try fileManager.createDirectory(at: myDirURL, withIntermediateDirectories: true, attributes: nil)
+            } catch {
+                print("Could not create shared cache dir: \(error)")
+                return nil
+            }
+        }
+        
+        return myDirURL
     }
 
-
+    private func baseDirectoryURL(for kind: SharedContainerKind) -> URL {
+        return getSharedCacheDirectory()!
+    }
 
     private func resolvedStoreConfiguration() throws -> StoreConfiguration {
         guard let storedSelection = storedStoreSelection() else {
