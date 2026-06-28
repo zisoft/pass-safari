@@ -49,6 +49,7 @@ const copyPasswordButton = document.getElementById("copy-password");
 const copyUsernameButton = document.getElementById("copy-username");
 const copyOTPButton = document.getElementById("copy-otp");
 const openURLButton = document.getElementById("open-url");
+const copyURLButton = document.getElementById("detail-copy-url");
 const togglePasswordButton = document.getElementById("toggle-password");
 const autofillEntryButton = document.getElementById("autofill-entry");
 const closeDetailsButton = document.getElementById("close-details");
@@ -64,6 +65,10 @@ const editUsernameInput = document.getElementById("edit-username-input");
 const editURLInput = document.getElementById("edit-url-input");
 const editStatusElement = document.getElementById("edit-status");
 const editContentTextarea = document.getElementById("edit-content");
+const editCopyPasswordButton = document.getElementById("edit-copy-password");
+const editCopyUsernameButton = document.getElementById("edit-copy-username");
+const editOpenURLButton = document.getElementById("edit-open-url");
+const editCopyURLButton = document.getElementById("edit-copy-url");
 const deleteEditButton = document.getElementById("delete-edit");
 const cancelEditButton = document.getElementById("cancel-edit");
 const saveEditButton = document.getElementById("save-edit");
@@ -82,15 +87,6 @@ const passwordAvoidAmbigous = document.getElementById("password-avoid-ambigous")
 const passwordMinDigits = document.getElementById("password-min-digits");
 const passwordMinSpecialChars = document.getElementById("password-min-special-chars");
 const passwordGenerateButton = document.getElementById("password-generate-button");
-
-passwordCheckUpper.addEventListener("change", checkPasswordLengthSettings);
-passwordCheckLower.addEventListener("change", checkPasswordLengthSettings);
-passwordCheckNumbers.addEventListener("change", checkPasswordLengthSettings);
-passwordCheckSpecial.addEventListener("change", checkPasswordLengthSettings);
-passwordLength.addEventListener("change", checkPasswordLengthSettings);
-passwordMinDigits.addEventListener("change", checkPasswordLengthSettings);
-passwordMinSpecialChars.addEventListener("change", checkPasswordLengthSettings);
-
 
 let allEntries = [];
 let allSuggestions = [];
@@ -128,6 +124,7 @@ async function init() {
   copyUsernameButton.addEventListener("click", () => onCopyFieldClick("username"));
   copyOTPButton.addEventListener("click", () => onCopyFieldClick("otp"));
   openURLButton.addEventListener("click", () => onOpenURLClick());
+  copyURLButton.addEventListener("click", () => onCopyFieldClick("url"));
   togglePasswordButton.addEventListener("click", onTogglePasswordClick);
   autofillEntryButton.addEventListener("click", onAutofillEntryClick);
   closeDetailsButton.addEventListener("click", onCloseDetailsClicked);
@@ -138,6 +135,21 @@ async function init() {
   newEntryButton.addEventListener("click", onNewEntryClick);
   editTogglePasswordButton.addEventListener("click", onEditTogglePasswordClick);
   passwordGenerateButton.addEventListener("click", generatePassword);
+
+  editCopyPasswordButton.addEventListener("click", () => copyEditText(editPasswordInput.value));
+  editCopyUsernameButton.addEventListener("click", () => copyEditText(editUsernameInput.value));
+  editCopyURLButton.addEventListener("click", () => copyEditText(editURLInput.value));
+  editOpenURLButton.addEventListener("click", onEditOpenUrl);
+
+  passwordCheckUpper.addEventListener("change", checkPasswordLengthSettings);
+  passwordCheckLower.addEventListener("change", checkPasswordLengthSettings);
+  passwordCheckNumbers.addEventListener("change", checkPasswordLengthSettings);
+  passwordCheckSpecial.addEventListener("change", checkPasswordLengthSettings);
+  passwordLength.addEventListener("change", checkPasswordLengthSettings);
+  passwordMinDigits.addEventListener("change", checkPasswordLengthSettings);
+  passwordMinSpecialChars.addEventListener("change", checkPasswordLengthSettings);
+
+
 
   try {
     await refreshActiveTabContext();
@@ -423,19 +435,30 @@ async function onEntryClick(entry, { preserveSearchFocus = false } = {}) {
   }
 }
 
-async function copyText(value) {
+async function copyDetailText(value) {
   try {
-    const response = await sendNativeMessage({
-      command: "copyText",
-      text: value,
-    });
-
-    if (!response?.ok) {
-      throw new Error(response?.error || "Unable to copy value.");
-    }
-
+    await copyText(value);
   } catch (error) {
     setDetailStatus(error.message || "Unable to copy value.", true);
+  }
+}
+
+async function copyEditText(value) {
+  try {
+    await copyText(value);
+  } catch (error) {
+    setEditStatus(error.message || "Unable to copy value.", true);
+  }
+}
+
+async function copyText(value) {
+  const response = await sendNativeMessage({
+    command: "copyText",
+    text: value,
+  });
+
+  if (!response?.ok) {
+    throw new Error(response?.error || "Unable to copy value.");
   }
 }
 
@@ -449,7 +472,17 @@ async function onCopyFieldClick(fieldName) {
     return;
   }
 
-  await copyText(value);
+  await copyDetailText(value);
+}
+
+function onEditOpenUrl() {
+  const url = editURLInput.value;
+
+  if(!url) {
+    return;
+  }
+
+  window.location.href = url;
 }
 
 function onOpenURLClick() {
@@ -1629,6 +1662,7 @@ function renderEntryDetails(details) {
   const password = typeof details.password === "string" ? details.password : "";
   detailPasswordRowElement.hidden = !password;
   copyPasswordButton.disabled = !(details.password || "").length;
+  updatePasswordVisibility();
 
   const username = typeof details.username === "string" ? details.username : "";
   detailUsernameRowElement.hidden = !username;
@@ -1677,7 +1711,7 @@ function renderEntryDetails(details) {
         button.className = "icon";
         button.title = "Copy value";
         button.append(icon_svg);
-        button.addEventListener("click", () => copyText(field.value));
+        button.addEventListener("click", () => copyDetailText(field.value));
         action.append(button);
         body.append(action);
       }
