@@ -576,17 +576,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func sharedContainerURL(for kind: SharedContainerKind) throws -> URL {
-        let containerURL = baseDirectoryURL(for: kind)
+        let containerURL = try baseDirectoryURL(for: kind)
         try FileManager.default.createDirectory(at: containerURL, withIntermediateDirectories: true)
         return containerURL
     }
 
-    func getSharedCacheDirectory() -> URL? {
+    func getSharedCacheDirectory() throws -> URL {
         let fileManager = FileManager.default
         
         guard let groupURL = fileManager.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
-            print("Error: Could not load AppGroup. Check Xcode capabilities.")
-            return nil
+            throw PassError.executionFailed("Could not load AppGroup")
         }
         
         let cacheURL = groupURL.appendingPathComponent("Library/Caches", isDirectory: true)
@@ -596,16 +595,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             do {
                 try fileManager.createDirectory(at: myDirURL, withIntermediateDirectories: true, attributes: nil)
             } catch {
-                print("Could not create shared cache dir: \(error)")
-                return nil
+              throw PassError.executionFailed("Could not create shared cache dir: \(error)")
             }
         }
         
         return myDirURL
     }
 
-    private func baseDirectoryURL(for kind: SharedContainerKind) -> URL {
-        return getSharedCacheDirectory()!
+    private func baseDirectoryURL(for kind: SharedContainerKind) throws -> URL {
+        return try getSharedCacheDirectory()
     }
 
     private func resolvedStoreConfiguration() throws -> StoreConfiguration {

@@ -434,25 +434,15 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
 
     private func response(for configuration: StoreConfiguration) -> [String: Any] {
         [
-            "ok": true,
-            "storePath": configuration.displayPath,
-            "usingDefaultStore": configuration.usingDefaultStore
+            "ok": true
         ]
     }
 
     private func errorResponse(for error: Error) -> [String: Any] {
-        var response: [String: Any] = [
+        let response: [String: Any] = [
             "ok": false,
             "error": error.localizedDescription
         ]
-
-        if let storedSelection = storedStoreSelection() {
-            response["storePath"] = storedSelection.path
-            response["usingDefaultStore"] = false
-        } else {
-            response["storePath"] = resolvedDefaultStorePath()
-            response["usingDefaultStore"] = true
-        }
 
         return response
     }
@@ -976,12 +966,11 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
         try sharedContainerURL(for: kind).appendingPathComponent(fileName)
     }
 
-    func getSharedCacheDirectory() -> URL? {
+    func getSharedCacheDirectory() throws -> URL {
         let fileManager = FileManager.default
         
         guard let groupURL = fileManager.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
-            print("Error: Could not load AppGroup. Check Xcode capabilities.")
-            return nil
+            throw PassError.executionFailed("Could not load AppGroup")
         }
         
         let cacheURL = groupURL.appendingPathComponent("Library/Caches", isDirectory: true)
@@ -991,8 +980,7 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
             do {
                 try fileManager.createDirectory(at: myDirURL, withIntermediateDirectories: true, attributes: nil)
             } catch {
-                print("Could not create shared cache dir: \(error)")
-                return nil
+              throw PassError.executionFailed("Could not create shared cache dir: \(error)")
             }
         }
         
@@ -1000,16 +988,14 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
     }
 
     private func sharedContainerURL(for kind: SharedContainerKind) throws -> URL {
-        let containerURL = baseDirectoryURL(for: kind)
+        let containerURL = try baseDirectoryURL(for: kind)
         try FileManager.default.createDirectory(at: containerURL, withIntermediateDirectories: true)
         return containerURL
     }
 
-    private func baseDirectoryURL(for kind: SharedContainerKind) -> URL {
-        return getSharedCacheDirectory()!
+    private func baseDirectoryURL(for kind: SharedContainerKind) throws -> URL {
+        return try getSharedCacheDirectory()
     }
-
-
 
     private func resolvedDefaultStorePath() -> String {
         let rawPath = defaultStorePath
