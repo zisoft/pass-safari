@@ -73,7 +73,6 @@ let currentTabURL = "";
 let selectedEntry = null;
 let selectedEntryDetails = null;
 let isPasswordVisible = false;
-let isRecordingShortcut = false;
 let otpRefreshIntervalHandle = null;
 let otpRefreshInFlight = false;
 let otpRefreshLastBucket = null;
@@ -348,10 +347,16 @@ async function onEditEntryClick() {
   openEditPanel();
 }
 
-function openEditPanel() {
-  mainPanelElement.hidden = true;
+function showPanel(panel) {
   detailPanelElement.hidden = true;
-  editPanelElement.hidden = false;
+  editPanelElement.hidden = true;
+  mainPanelElement.hidden = true;
+  
+  panel.hidden = false;
+}
+
+function openEditPanel() {
+  showPanel(editPanelElement);
   
   deleteEditButton.textContent = "Delete";
   deleteEditButton.dataset.confirmed = "";
@@ -477,14 +482,13 @@ function onCloseEditClick() {
 }
 
 function closeEditPanel() {
-  editPanelElement.hidden = true;
-  detailPanelElement.hidden = true;
   editContentTextarea.value = "";
   setEditStatus("");
-  if(newEntry)
-    loadEntries();
+  selectedEntry = null;
+  selectedEntryDetails = null;
+  showPanel(mainPanelElement);
+  loadEntries();
   newEntry = false;
-  mainPanelElement.hidden = false;
 }
 
 async function onSaveEditClick() {
@@ -849,9 +853,7 @@ async function onShowEntryClick() {
 }
 
 function onCloseDetailsClicked() {
-  detailPanelElement.hidden = true;
-  editPanelElement.hidden = true;
-  mainPanelElement.hidden = false;
+  showPanel(mainPanelElement);
 }
 
 async function onEntryTitleClick() {
@@ -1331,9 +1333,7 @@ function updateAutofillButtonState() {
 }
 
 function renderEntryDetails(details) {
-  mainPanelElement.hidden = true;
-  editPanelElement.hidden = true;
-  detailPanelElement.hidden = false;
+  showPanel(detailPanelElement);
 
   stopOTPRefreshLoop();
   isPasswordVisible = false;

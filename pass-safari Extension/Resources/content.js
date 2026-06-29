@@ -1,7 +1,7 @@
 const SHORTCUT_STORAGE_KEY = "AutofillShortcutConfig";
 const OTP_AUTO_SUBMIT_STORAGE_KEY = "OTPAutofillAutoSubmitEnabled";
 const DEFAULT_AUTOFILL_SHORTCUT = Object.freeze({
-    key: "l",
+    key: "o",
     metaKey: true,
     ctrlKey: false,
     altKey: false,

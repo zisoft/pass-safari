@@ -738,7 +738,7 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
         }
 
         let availableEntries = Set(inventory.entries)
-        return cache.entries.compactMap { item -> URLIndexMatchCandidate? in
+        let matches = cache.entries.compactMap { item -> URLIndexMatchCandidate? in
             let (entryName, entryCache) = item
             guard availableEntries.contains(where: { $0.path.lowercased() == entryName.lowercased()}) else {
                 return nil
@@ -758,6 +758,8 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
 
             return left.entry.localizedCaseInsensitiveCompare(right.entry) == .orderedAscending
         }
+
+        return matches
     }
 
     private func shortcutMatchEntry(from candidates: [URLIndexMatchCandidate]) -> String? {
