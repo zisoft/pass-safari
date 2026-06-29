@@ -126,7 +126,6 @@ async function init() {
     console.warn("Unable to inspect the active tab.", error);
   }
 
-  await refreshStoreConfiguration();
   await loadEntries();
 
   requestAnimationFrame(() => {
@@ -550,16 +549,6 @@ function setEditStatus(message, isError = false) {
   editStatusElement.textContent = message;
   editStatusElement.classList.toggle("error", isError);
   editStatusElement.hidden = !message;
-}
-
-async function refreshStoreConfiguration() {
-  const response = await sendNativeMessage({
-    command: "getStoreConfiguration",
-  });
-
-  if (!response?.ok) {
-    throw new Error(response?.error || "Unable to read the password store configuration.");
-  }
 }
 
 function clearURLIndexStatusPoll() {

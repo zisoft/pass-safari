@@ -11,6 +11,7 @@ import SafariServices
 import os.log
 
 private let appGroupIdentifier = "group.de.zisoft.pass-safari"
+private let defaultStorePath = "~/.password-store"
 private let sharedContainerDirectoryName = "pass-safari"
 private let storeBookmarkKey = "PasswordStoreBookmark"
 private let storePathKey = "PasswordStorePath"
@@ -20,12 +21,10 @@ private let passRequestFileNamePrefix = "PassRequest-"
 private let passResponseFileNamePrefix = "PassResponse-"
 private let urlIndexCacheFileName = "URLIndexCache.json"
 private let urlIndexRefreshLockFileName = "URLIndexRefresh.lock"
-private let chooseStoreFolderURLHost = "choose-store-folder"
 private let runPassURLHost = "run-pass"
 private let refreshURLIndexURLHost = "refresh-url-index"
 
 class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
-    private let defaultStorePath = "~/.password-store"
 
     private struct StoreConfiguration {
         let url: URL
@@ -97,11 +96,6 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
         let url: String?
         let fields: [[String: String]]
         let notes: String?
-    }
-
-    private enum SharedContainerKind {
-        case state
-        case cache
     }
 
     private enum StoreError: LocalizedError {
@@ -203,14 +197,8 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
         }
 
         switch payload["command"] as? String {
-        case "getStoreConfiguration":
-            return getStoreConfiguration()
         case "listEntries":
             return listEntries(pageURL: payload["pageURL"] as? String)
-        case "chooseStoreFolder":
-            return chooseStoreFolder()
-        case "resetStoreFolder":
-            return resetStoreFolder()
         case "getEntryDetails":
             return getEntryDetails(entryName: payload["entry"] as? String)
         case "getEntryOTP":
@@ -226,15 +214,6 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
                 "ok": false,
                 "error": "Unsupported command."
             ]
-        }
-    }
-
-    private func getStoreConfiguration() -> [String: Any] {
-        do {
-            let configuration = try resolvedStoreConfiguration()
-            return response(for: configuration)
-        } catch {
-            return errorResponse(for: error)
         }
     }
 
@@ -275,37 +254,6 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
             response["entries"] = []
             return response
         }
-    }
-
-    private func chooseStoreFolder() -> [String: Any] {
-        do {
-            let requestID = UUID().uuidString
-            try removeStoreSelectionEventFile()
-            try launchContainingAppForStoreSelection(requestID: requestID)
-
-            let event = try waitForStoreSelectionEvent(requestID: requestID)
-            switch event.status {
-            case .selected:
-                var response = getStoreConfiguration()
-                response["openedChooserApp"] = true
-                return response
-            case .cancelled:
-                var response = getStoreConfiguration()
-                response["openedChooserApp"] = true
-                response["cancelled"] = true
-                return response
-            }
-        } catch {
-            return errorResponse(for: error)
-        }
-    }
-
-    private func resetStoreFolder() -> [String: Any] {
-        if let fileURL = try? storeSelectionFileURL() {
-            try? FileManager.default.removeItem(at: fileURL)
-        }
-
-        return getStoreConfiguration()
     }
 
     private func getEntryDetails(entryName: String?) -> [String: Any] {
@@ -702,10 +650,6 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
         return try action()
     }
 
-    private func launchContainingAppForStoreSelection(requestID: String) throws {
-        try launchContainingApp(urlHost: chooseStoreFolderURLHost, requestID: requestID, unavailableError: StoreError.chooserUnavailable)
-    }
-
     private func launchContainingAppForPassRequest(requestID: String) throws {
         try launchContainingApp(urlHost: runPassURLHost, requestID: requestID, unavailableError: PassBridgeError.companionUnavailable)
     }
@@ -939,31 +883,31 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
     }
 
     private func storeSelectionFileURL() throws -> URL {
-        try resolvedSharedFileURL(fileName: storeSelectionFileName, kind: .state, migrateLegacyFile: true)
+        try resolvedSharedFileURL(fileName: storeSelectionFileName)
     }
 
     private func storeSelectionEventFileURL() throws -> URL {
-        try resolvedSharedFileURL(fileName: storeSelectionEventFileName, kind: .state)
+        try resolvedSharedFileURL(fileName: storeSelectionEventFileName)
     }
 
     private func passRequestFileURL(requestID: String) throws -> URL {
-        try resolvedSharedFileURL(fileName: "\(passRequestFileNamePrefix)\(requestID).plist", kind: .state)
+        try resolvedSharedFileURL(fileName: "\(passRequestFileNamePrefix)\(requestID).plist")
     }
 
     private func passResponseFileURL(requestID: String) throws -> URL {
-        try resolvedSharedFileURL(fileName: "\(passResponseFileNamePrefix)\(requestID).plist", kind: .state)
+        try resolvedSharedFileURL(fileName: "\(passResponseFileNamePrefix)\(requestID).plist")
     }
 
     private func urlIndexCacheFileURL() throws -> URL {
-        try resolvedSharedFileURL(fileName: urlIndexCacheFileName, kind: .cache, migrateLegacyFile: true)
+        try resolvedSharedFileURL(fileName: urlIndexCacheFileName)
     }
 
     private func urlIndexRefreshLockFileURL() throws -> URL {
-        try resolvedSharedFileURL(fileName: urlIndexRefreshLockFileName, kind: .cache)
+        try resolvedSharedFileURL(fileName: urlIndexRefreshLockFileName)
     }
 
-    private func resolvedSharedFileURL(fileName: String, kind: SharedContainerKind, migrateLegacyFile: Bool = false) throws -> URL {
-        try sharedContainerURL(for: kind).appendingPathComponent(fileName)
+    private func resolvedSharedFileURL(fileName: String) throws -> URL {
+        try sharedContainerURL().appendingPathComponent(fileName)
     }
 
     func getSharedCacheDirectory() throws -> URL {
@@ -987,13 +931,13 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
         return myDirURL
     }
 
-    private func sharedContainerURL(for kind: SharedContainerKind) throws -> URL {
-        let containerURL = try baseDirectoryURL(for: kind)
+    private func sharedContainerURL() throws -> URL {
+        let containerURL = try baseDirectoryURL()
         try FileManager.default.createDirectory(at: containerURL, withIntermediateDirectories: true)
         return containerURL
     }
 
-    private func baseDirectoryURL(for kind: SharedContainerKind) throws -> URL {
+    private func baseDirectoryURL() throws -> URL {
         return try getSharedCacheDirectory()
     }
 
