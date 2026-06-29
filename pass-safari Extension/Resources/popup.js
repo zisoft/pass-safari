@@ -4,33 +4,12 @@ const NATIVE_APP_IDS = [
   "de.zisoft.pass-safari",
   "de.zisoft.pass-safari.Extension",
 ];
-const DEFAULT_STORE_PATH = "~/.password-store";
-const SHORTCUT_STORAGE_KEY = "AutofillShortcutConfig";
-const OTP_AUTO_SUBMIT_STORAGE_KEY = "OTPAutofillAutoSubmitEnabled";
-const DEFAULT_AUTOFILL_SHORTCUT = Object.freeze({
-  key: "l",
-  metaKey: true,
-  ctrlKey: false,
-  altKey: false,
-  shiftKey: true,
-});
 
 const searchInput = document.getElementById("search");
 const statusElement = document.getElementById("status");
 const suggestionsArea = document.getElementById("suggestions-area");
 const suggestionsElement = document.getElementById("suggestions");
 const entriesElement = document.getElementById("entries");
-const storePathElement = document.getElementById("store-path");
-const storeModeElement = document.getElementById("store-mode");
-const chooseStoreButton = document.getElementById("choose-store");
-const useDefaultButton = document.getElementById("use-default");
-const toggleSetupButton = document.getElementById("toggle-setup");
-const setupPanelElement = document.getElementById("setup-panel");
-const otpAutoSubmitCheckboxElement = document.getElementById("otp-auto-submit");
-const shortcutDisplayElement = document.getElementById("shortcut-display");
-const shortcutHintElement = document.getElementById("shortcut-hint");
-const recordShortcutButton = document.getElementById("record-shortcut");
-const resetShortcutButton = document.getElementById("reset-shortcut");
 const detailsTitleElement = document.getElementById("details-title");
 const detailsStatusElement = document.getElementById("details-status");
 const detailPasswordRowElement = document.getElementById("detail-password-row");
@@ -90,9 +69,7 @@ const passwordGenerateButton = document.getElementById("password-generate-button
 
 let allEntries = [];
 let allSuggestions = [];
-let currentStorePath = DEFAULT_STORE_PATH;
 let currentTabURL = "";
-let usingDefaultStore = true;
 let selectedEntry = null;
 let selectedEntryDetails = null;
 let isPasswordVisible = false;
@@ -112,14 +89,6 @@ async function init() {
   searchInput.addEventListener("input", renderEntries);
   searchInput.addEventListener("keydown", onSearchKeyDown);
   entriesElement.addEventListener("keydown", onEntriesKeyDown);
-  chooseStoreButton.addEventListener("click", onChooseStoreClick);
-  useDefaultButton.addEventListener("click", onUseDefaultClick);
-  // toggleSetupButton.addEventListener("click", onToggleSetupClick);
-  recordShortcutButton.addEventListener("click", onRecordShortcutClick);
-  resetShortcutButton.addEventListener("click", onResetShortcutClick);
-  otpAutoSubmitCheckboxElement.addEventListener("change", onOTPSubmitSettingChange);
-  document.addEventListener("click", onDocumentClick);
-  document.addEventListener("keydown", onDocumentKeyDown);
   copyPasswordButton.addEventListener("click", () => onCopyFieldClick("password"));
   copyUsernameButton.addEventListener("click", () => onCopyFieldClick("username"));
   copyOTPButton.addEventListener("click", () => onCopyFieldClick("otp"));
@@ -157,245 +126,12 @@ async function init() {
     console.warn("Unable to inspect the active tab.", error);
   }
 
-  await refreshSetupSettingsUI();
-
   await refreshStoreConfiguration();
   await loadEntries();
 
   requestAnimationFrame(() => {
     focusSearchInput();
   });
-}
-
-function setSetupPanelOpen(isOpen) {
-  setupPanelElement.hidden = !isOpen;
-  toggleSetupButton.setAttribute("aria-expanded", String(isOpen));
-  toggleSetupButton.setAttribute("aria-label", isOpen ? "Hide setup" : "Show setup");
-  toggleSetupButton.title = isOpen ? "Hide setup" : "Setup";
-
-  if (!isOpen && isRecordingShortcut) {
-    isRecordingShortcut = false;
-    void refreshSetupSettingsUI();
-  }
-}
-
-function onToggleSetupClick(event) {
-  event.stopPropagation();
-  const willOpen = setupPanelElement.hidden;
-  setSetupPanelOpen(willOpen);
-  if (willOpen) {
-    void refreshSetupSettingsUI();
-  }
-}
-
-function onDocumentClick(event) {
-  if (setupPanelElement.hidden) {
-    return;
-  }
-
-  const clickedInsideSetup = setupPanelElement.contains(event.target);
-  const clickedToggle = toggleSetupButton.contains(event.target);
-  if (!clickedInsideSetup && !clickedToggle) {
-    setSetupPanelOpen(false);
-  }
-}
-
-function onDocumentKeyDown(event) {
-  if (isRecordingShortcut) {
-    void onShortcutRecordingKeyDown(event);
-    return;
-  }
-
-  if (event.key === "Escape" && !setupPanelElement.hidden) {
-    setSetupPanelOpen(false);
-    toggleSetupButton.focus();
-  }
-}
-
-function normalizeShortcutConfig(rawConfig) {
-  return {
-    key: typeof rawConfig?.key === "string" && rawConfig.key.length === 1 ? rawConfig.key.toLowerCase() : DEFAULT_AUTOFILL_SHORTCUT.key,
-    metaKey: Boolean(rawConfig?.metaKey ?? DEFAULT_AUTOFILL_SHORTCUT.metaKey),
-    ctrlKey: Boolean(rawConfig?.ctrlKey ?? DEFAULT_AUTOFILL_SHORTCUT.ctrlKey),
-    altKey: Boolean(rawConfig?.altKey ?? DEFAULT_AUTOFILL_SHORTCUT.altKey),
-    shiftKey: Boolean(rawConfig?.shiftKey ?? DEFAULT_AUTOFILL_SHORTCUT.shiftKey),
-  };
-}
-
-async function readShortcutConfig() {
-  const storedValues = await globalThis.browser?.storage?.local?.get?.(SHORTCUT_STORAGE_KEY);
-  return normalizeShortcutConfig(storedValues?.[SHORTCUT_STORAGE_KEY]);
-}
-
-async function writeShortcutConfig(shortcutConfig) {
-  const normalizedShortcutConfig = normalizeShortcutConfig(shortcutConfig);
-  await globalThis.browser?.storage?.local?.set?.({
-    [SHORTCUT_STORAGE_KEY]: normalizedShortcutConfig,
-  });
-  return normalizedShortcutConfig;
-}
-
-async function readOTPAutofillAutoSubmitEnabled() {
-  const storedValues = await globalThis.browser?.storage?.local?.get?.(OTP_AUTO_SUBMIT_STORAGE_KEY);
-  return Boolean(storedValues?.[OTP_AUTO_SUBMIT_STORAGE_KEY]);
-}
-
-async function writeOTPAutofillAutoSubmitEnabled(isEnabled) {
-  await globalThis.browser?.storage?.local?.set?.({
-    [OTP_AUTO_SUBMIT_STORAGE_KEY]: Boolean(isEnabled),
-  });
-}
-
-function shortcutConfigDisplay(shortcutConfig) {
-  const parts = [];
-  if (shortcutConfig.metaKey) {
-    parts.push("⌘");
-  }
-  if (shortcutConfig.ctrlKey) {
-    parts.push("⌃");
-  }
-  if (shortcutConfig.altKey) {
-    parts.push("⌥");
-  }
-  if (shortcutConfig.shiftKey) {
-    parts.push("⇧");
-  }
-  parts.push(shortcutConfig.key.toUpperCase());
-  return parts.join("");
-}
-
-function beginShortcutRecording() {
-  isRecordingShortcut = true;
-  shortcutDisplayElement.textContent = "Press keys…";
-  shortcutHintElement.textContent = "Press a key combination with at least one modifier. Esc cancels.";
-  recordShortcutButton.textContent = "Recording…";
-}
-
-async function refreshShortcutSettingsUI() {
-  const shortcutConfig = await readShortcutConfig();
-  shortcutDisplayElement.textContent = shortcutConfigDisplay(shortcutConfig);
-  shortcutHintElement.textContent = "Works when a webpage has focus. If no exact match exists, the popup opens for manual selection.";
-  recordShortcutButton.textContent = "Change…";
-}
-
-async function refreshOTPAutofillSettingsUI() {
-  otpAutoSubmitCheckboxElement.checked = await readOTPAutofillAutoSubmitEnabled();
-}
-
-async function refreshSetupSettingsUI() {
-  await Promise.all([
-    refreshShortcutSettingsUI(),
-    refreshOTPAutofillSettingsUI(),
-  ]);
-}
-
-function onRecordShortcutClick() {
-  beginShortcutRecording();
-}
-
-async function onResetShortcutClick() {
-  isRecordingShortcut = false;
-  await writeShortcutConfig(DEFAULT_AUTOFILL_SHORTCUT);
-  await refreshSetupSettingsUI();
-}
-
-async function onOTPSubmitSettingChange() {
-  await writeOTPAutofillAutoSubmitEnabled(otpAutoSubmitCheckboxElement.checked);
-}
-
-function isModifierOnlyKey(key) {
-  return ["Meta", "Control", "Alt", "Shift"].includes(key);
-}
-
-async function onShortcutRecordingKeyDown(event) {
-  event.preventDefault();
-  event.stopPropagation();
-
-  if (event.key === "Escape") {
-    isRecordingShortcut = false;
-    await refreshSetupSettingsUI();
-    return;
-  }
-
-  if (isModifierOnlyKey(event.key)) {
-    return;
-  }
-
-  const shortcutConfig = {
-    key: event.key.toLowerCase(),
-    metaKey: event.metaKey,
-    ctrlKey: event.ctrlKey,
-    altKey: event.altKey,
-    shiftKey: event.shiftKey,
-  };
-
-  if (!shortcutConfig.metaKey && !shortcutConfig.ctrlKey && !shortcutConfig.altKey && !shortcutConfig.shiftKey) {
-    shortcutHintElement.textContent = "Add at least one modifier key like ⌘, ⌃, ⌥, or ⇧.";
-    return;
-  }
-
-  isRecordingShortcut = false;
-  await writeShortcutConfig(shortcutConfig);
-  await refreshSetupSettingsUI();
-}
-
-async function onChooseStoreClick() {
-  setSetupPanelOpen(false);
-  setBusy(true);
-  setStatus("Open the companion app and choose a password-store folder…");
-
-  try {
-    const response = await sendNativeMessage({
-      command: "chooseStoreFolder",
-    });
-
-    if (response?.storePath) {
-      applyStoreConfiguration(response);
-    }
-
-    if (!response?.ok) {
-      throw new Error(response?.error || "Unable to choose a password store folder.");
-    }
-
-    if (response.cancelled) {
-      setStatus("Folder selection cancelled.");
-      return;
-    }
-
-    clearSelectedEntry();
-    await loadEntries();
-  } catch (error) {
-    setStatus(error.message || "Unable to choose a password store folder.", true);
-  } finally {
-    setBusy(false);
-  }
-}
-
-async function onUseDefaultClick() {
-  setSetupPanelOpen(false);
-  setBusy(true);
-  setStatus("Switching to the default password store…");
-
-  try {
-    const response = await sendNativeMessage({
-      command: "resetStoreFolder",
-    });
-
-    if (response?.storePath) {
-      applyStoreConfiguration(response);
-    }
-
-    if (!response?.ok) {
-      throw new Error(response?.error || "Unable to switch to the default password store.");
-    }
-
-    clearSelectedEntry();
-    await loadEntries();
-  } catch (error) {
-    setStatus(error.message || "Unable to switch to the default password store.", true);
-  } finally {
-    setBusy(false);
-  }
 }
 
 async function onEntryClick(entry, { preserveSearchFocus = false } = {}) {
@@ -414,10 +150,6 @@ async function onEntryClick(entry, { preserveSearchFocus = false } = {}) {
       command: "getEntryDetails",
       entry,
     });
-
-    if (response?.storePath) {
-      applyStoreConfiguration(response);
-    }
 
     if (selectedEntry !== entry) {
       return;
@@ -593,10 +325,6 @@ async function getEntryData(entry) {
       entry,
     });
 
-    if (response?.storePath) {
-      applyStoreConfiguration(response);
-    }
-
     if (!response?.ok) {
       throw new Error(response?.error || "Unable to load entry details.");
     }
@@ -715,10 +443,6 @@ async function onDeleteEntryClicked() {
         entry: selectedEntry,
       });
 
-      if (response?.storePath) {
-        applyStoreConfiguration(response);
-      }
-
       if (!response?.ok) {
         throw new Error(response?.error || "Unable to delete entry.");
       }
@@ -805,10 +529,6 @@ async function onSaveEditClick() {
       content: content,
     });
 
-    if (response?.storePath) {
-      applyStoreConfiguration(response);
-    }
-
     if (!response?.ok) {
       throw new Error(response?.error || "Unable to save entry.");
     }
@@ -837,10 +557,6 @@ async function refreshStoreConfiguration() {
     command: "getStoreConfiguration",
   });
 
-  if (response?.storePath) {
-    applyStoreConfiguration(response);
-  }
-
   if (!response?.ok) {
     throw new Error(response?.error || "Unable to read the password store configuration.");
   }
@@ -867,10 +583,6 @@ async function refreshURLIndexStatus() {
       command: "listEntries",
       pageURL: currentTabURL,
     });
-
-    if (response?.storePath) {
-      applyStoreConfiguration(response);
-    }
 
     if (!response?.ok) {
       return;
@@ -915,10 +627,6 @@ async function loadEntries() {
       pageURL: currentTabURL,
     });
 
-    if (response?.storePath) {
-      applyStoreConfiguration(response);
-    }
-
     if (!response?.ok) {
       throw new Error(response?.error || "Unable to load pass entries.");
     }
@@ -956,18 +664,6 @@ async function loadEntries() {
     renderEntries();
     setStatus(error.message || "Unable to load pass entries.", true);
   }
-}
-
-function applyStoreConfiguration(response) {
-  currentStorePath = response?.storePath || DEFAULT_STORE_PATH;
-  usingDefaultStore = Boolean(response?.usingDefaultStore);
-
-  storePathElement.textContent = currentStorePath;
-  storePathElement.title = currentStorePath;
-  storeModeElement.textContent = usingDefaultStore
-    ? "Using the default password store folder."
-    : "Using a user-selected password store folder.";
-  useDefaultButton.disabled = usingDefaultStore;
 }
 
 function currentTabDisplayHost() {
@@ -1554,10 +1250,6 @@ async function refreshSelectedEntryOTP() {
       command: "getEntryOTP",
       entry: selectedEntry,
     });
-
-    if (response?.storePath) {
-      applyStoreConfiguration(response);
-    }
 
     if (selectedEntry !== response?.entry) {
       return;
