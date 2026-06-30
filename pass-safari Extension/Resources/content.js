@@ -803,3 +803,64 @@ browser.runtime.onMessage.addListener((request) => {
         });
     }
 });
+
+// Listen for direct PassKey creation requests from web page
+document.addEventListener('pass-safari-create-passkey', async (event) => {
+    console.log('[pass-safari content] Received direct passkey creation request', event.detail);
+    
+    try {
+        const result = await browser.runtime.sendMessage({
+            command: 'createPasskey',
+            entry: event.detail.entry,
+            rpId: event.detail.rpId,
+            userId: event.detail.userId,
+            userName: event.detail.userName
+        });
+        
+        console.log('[pass-safari content] PassKey creation result:', result);
+        
+        // Send response back to web page
+        window.dispatchEvent(new CustomEvent('pass-safari-passkey-response', {
+            detail: result
+        }));
+    } catch (error) {
+        console.error('[pass-safari content] Error creating passkey:', error);
+        
+        window.dispatchEvent(new CustomEvent('pass-safari-passkey-response', {
+            detail: {
+                ok: false,
+                error: error.message
+            }
+        }));
+    }
+});
+
+// Listen for direct PassKey authentication requests from web page
+document.addEventListener('pass-safari-auth-passkey', async (event) => {
+    console.log('[pass-safari content] Received direct passkey authentication request', event.detail);
+    
+    try {
+        const result = await browser.runtime.sendMessage({
+            command: 'authenticatePasskey',
+            entry: event.detail.entry,
+            rpId: event.detail.rpId,
+            challenge: event.detail.challenge
+        });
+        
+        console.log('[pass-safari content] PassKey authentication result:', result);
+        
+        // Send response back to web page
+        window.dispatchEvent(new CustomEvent('pass-safari-auth-response', {
+            detail: result
+        }));
+    } catch (error) {
+        console.error('[pass-safari content] Error authenticating passkey:', error);
+        
+        window.dispatchEvent(new CustomEvent('pass-safari-auth-response', {
+            detail: {
+                ok: false,
+                error: error.message
+            }
+        }));
+    }
+});

@@ -202,3 +202,68 @@ MIT — see [LICENSE](LICENSE).
 - Built for [pass](https://www.passwordstore.org/) by Jason A. Donenfeld
 - [Password generator](https://github.com/daniausman24-bot/password-generator) by Dania Usman 
 
+
+---
+
+## 🔐 PassKey Support (NEW!)
+
+pass-safari now includes experimental PassKey (WebAuthn) support via the `pass-passkey` extension!
+
+### Features
+
+- 🔑 Store PassKey credentials encrypted in your password store
+- 🌐 WebAuthn API interception in Safari
+- 🔒 ES256 (ECDSA P-256) key generation
+- 📱 Seamless integration with existing pass workflow
+- 🔄 Git sync support for credentials
+
+### Quick Start
+
+```bash
+# 1. Install pass-passkey extension
+cd ~/src/pass-passkey
+cp passkey.bash /opt/homebrew/lib/password-store/extensions/
+
+# 2. Create a PassKey
+pass passkey add github.com --rp-id=github.com --user-id=myuser --user-name=user@example.com
+
+# 3. List PassKeys
+pass passkey list
+
+# 4. Rebuild pass-safari
+cd ~/src/pass-safari
+open pass-safari.xcodeproj
+# Build & Run (⌘R)
+
+# 5. Test
+open passkey-test.html
+```
+
+### Documentation
+
+- [PASSKEY_SUMMARY.md](PASSKEY_SUMMARY.md) - Overview and quick reference
+- [PASSKEY_POC.md](PASSKEY_POC.md) - Detailed implementation guide
+- [CHANGES.md](CHANGES.md) - Code changes and installation
+
+### Status
+
+⚠️ **Proof of Concept** - Not production-ready yet!
+
+**What works:**
+- ✅ Pass extension for credential management
+- ✅ Browser integration and API interception
+- ✅ File-based communication
+- ✅ Basic WebAuthn flow
+
+**TODO for production:**
+- [ ] CBOR encoding for WebAuthn data structures
+- [ ] Proper authenticator data format
+- [ ] User confirmation UI
+- [ ] Credential selection for multiple PassKeys
+- [ ] RP ID and origin validation
+- [ ] Signature counter implementation
+
+### Security
+
+PassKey private keys are stored GPG-encrypted in `~/.password-store/.passkeys/` and can be synced via Git just like regular passwords.
+

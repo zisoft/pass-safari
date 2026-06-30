@@ -32,6 +32,12 @@ private struct PassRequest {
     let command: PassRequestCommand
     let entry: String?
     let content: String?
+    let rpId: String?
+    let userId: String?
+    let userName: String?
+    let credentialId: String?
+    let challenge: String?
+    let clientDataJSON: String?
 }
 
 private struct StoreInventoryEntry: Hashable {
@@ -78,6 +84,22 @@ private struct OTPDetails {
     let period: Int?
 }
 
+private struct PassKeyCredential: Codable {
+    let credentialId: String
+    let rpId: String
+    let userId: String
+    let userName: String
+    let createdAt: String
+    let algorithm: String
+    let privateKey: String
+    let publicKey: String
+}
+
+private struct PassKeyListEntry: Codable {
+    let entry: String
+    let count: Int
+}
+
 private enum SharedContainerKind {
     case state
     case cache
@@ -88,6 +110,10 @@ private enum PassRequestCommand: String {
     case getEntryOTP
     case updateEntry
     case deleteEntry
+    case listPasskeys
+    case getPasskeyCredentials
+    case createPasskey
+    case authenticatePasskey
 }
 
 private enum PassError: LocalizedError {
@@ -336,6 +362,89 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     "requestId": requestID,
                     "ok": true
                 ]
+            
+            case .listPasskeys:
+                let configuration = try resolvedStoreConfiguration()
+                let list = try withStoreAccess(configuration) {
+                    try listPasskeys(configuration: configuration)
+                }
+                
+                response = [
+                    "requestId": requestID,
+                    "ok": true,
+                    "passkeys": list
+                ]
+            
+            case .getPasskeyCredentials:
+                let entryName = try normalizedEntryName(from: request.entry)
+                let configuration = try resolvedStoreConfiguration()
+                let credentials = try withStoreAccess(configuration) {
+                    try getPasskeyCredentials(for: entryName, configuration: configuration)
+                }
+                
+                response = [
+                    "requestId": requestID,
+                    "ok": true,
+                    "entry": entryName,
+                    "credentials": credentials
+                ]
+            
+            case .createPasskey:
+                let entryName = try normalizedEntryName(from: request.entry)
+                guard let rpId = request.rpId, !rpId.isEmpty else {
+                    throw PassError.executionFailed("RP ID is required")
+                }
+                guard let userId = request.userId, !userId.isEmpty else {
+                    throw PassError.executionFailed("User ID is required")
+                }
+                guard let userName = request.userName, !userName.isEmpty else {
+                    throw PassError.executionFailed("User name is required")
+                }
+                
+                let configuration = try resolvedStoreConfiguration()
+                let credentialId = try withStoreAccess(configuration) {
+                    try createPasskey(
+                        for: entryName,
+                        rpId: rpId,
+                        userId: userId,
+                        userName: userName,
+                        configuration: configuration
+                    )
+                }
+                
+                response = [
+                    "requestId": requestID,
+                    "ok": true,
+                    "entry": entryName,
+                    "credentialId": credentialId
+                ]
+            
+            case .authenticatePasskey:
+                let entryName = try normalizedEntryName(from: request.entry)
+                guard let credentialId = request.credentialId, !credentialId.isEmpty else {
+                    throw PassError.executionFailed("Credential ID is required")
+                }
+                guard let challenge = request.challenge, !challenge.isEmpty else {
+                    throw PassError.executionFailed("Challenge is required")
+                }
+                
+                let configuration = try resolvedStoreConfiguration()
+                let signature = try withStoreAccess(configuration) {
+                    try authenticatePasskey(
+                        for: entryName,
+                        credentialId: credentialId,
+                        challenge: challenge,
+                        configuration: configuration
+                    )
+                }
+                
+                response = [
+                    "requestId": requestID,
+                    "ok": true,
+                    "entry": entryName,
+                    "credentialId": credentialId,
+                    "signature": signature
+                ]
             }
 
             try writePassResponse(requestID: requestID, payload: response)
@@ -480,7 +589,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return PassRequest(
             command: command,
             entry: payload["entry"] as? String,
-            content: payload["content"] as? String
+            content: payload["content"] as? String,
+            rpId: payload["rpId"] as? String,
+            userId: payload["userId"] as? String,
+            userName: payload["userName"] as? String,
+            credentialId: payload["credentialId"] as? String,
+            challenge: payload["challenge"] as? String,
+            clientDataJSON: payload["clientDataJSON"] as? String
         )
     }
 
@@ -1000,5 +1115,76 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         return String(cString: directory)
+    }
+    
+    // MARK: - PassKey Functions
+    
+    private func listPasskeys(configuration: StoreConfiguration) throws -> [[String: Any]] {
+        let output = try runPass(arguments: ["passkey", "list", "--json"], configuration: configuration)
+        let trimmedOutput = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        guard let data = trimmedOutput.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+            return []
+        }
+        
+        return json
+    }
+    
+    private func getPasskeyCredentials(for entryName: String, configuration: StoreConfiguration) throws -> [[String: Any]] {
+        let output = try runPass(arguments: ["passkey", "show", entryName, "--json"], configuration: configuration)
+        let trimmedOutput = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        guard let data = trimmedOutput.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+            return []
+        }
+        
+        return json
+    }
+    
+    private func createPasskey(
+        for entryName: String,
+        rpId: String,
+        userId: String,
+        userName: String,
+        configuration: StoreConfiguration
+    ) throws -> String {
+        let output = try runPass(
+            arguments: [
+                "passkey", "add", entryName,
+                "--rp-id=\(rpId)",
+                "--user-id=\(userId)",
+                "--user-name=\(userName)"
+            ],
+            configuration: configuration
+        )
+        
+        // Parse credential ID from output: "Added passkey credential <id> for <entry>"
+        let lines = output.components(separatedBy: .newlines)
+        for line in lines {
+            if line.hasPrefix("Added passkey credential ") {
+                let components = line.components(separatedBy: " ")
+                if components.count >= 4 {
+                    return components[3]
+                }
+            }
+        }
+        
+        throw PassError.executionFailed("Failed to extract credential ID from output")
+    }
+    
+    private func authenticatePasskey(
+        for entryName: String,
+        credentialId: String,
+        challenge: String,
+        configuration: StoreConfiguration
+    ) throws -> String {
+        let output = try runPass(
+            arguments: ["passkey", "sign", entryName, credentialId, challenge],
+            configuration: configuration
+        )
+        
+        return output.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

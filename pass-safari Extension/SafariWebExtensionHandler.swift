@@ -209,6 +209,14 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
             return deleteEntry(entryName: payload["entry"] as? String)
         case "copyText":
             return copyText(payload["text"] as? String)
+        case "listPasskeys":
+            return listPasskeys()
+        case "getPasskeyCredentials":
+            return getPasskeyCredentials(entryName: payload["entry"] as? String)
+        case "createPasskey":
+            return createPasskey(payload: payload)
+        case "authenticatePasskey":
+            return authenticatePasskey(payload: payload)
         default:
             return [
                 "ok": false,
@@ -977,5 +985,193 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
         }
 
         return try result.get()
+    }
+    
+    // MARK: - PassKey Support
+    
+    private func listPasskeys() -> [String: Any] {
+        do {
+            let configuration = try resolvedStoreConfiguration()
+            let passResponse = try requestPassResponse(command: "listPasskeys", entryName: "")
+            
+            guard passResponse.ok else {
+                throw PassError.executionFailed(passResponse.errorMessage ?? "Unable to list passkeys.")
+            }
+            
+            var response = response(for: configuration)
+            response["ok"] = true
+            // Parse passkeys from output if needed
+            response["passkeys"] = [] // Placeholder
+            return response
+        } catch {
+            return errorResponse(for: error)
+        }
+    }
+    
+    private func getPasskeyCredentials(entryName: String?) -> [String: Any] {
+        do {
+            let normalizedEntryName = try normalizedEntryName(from: entryName)
+            let configuration = try resolvedStoreConfiguration()
+            
+            // Create request
+            let requestID = UUID().uuidString
+            try removePassResponseFile(requestID: requestID)
+            try writePassRequest(requestID: requestID, command: "getPasskeyCredentials", entryName: normalizedEntryName)
+            try launchContainingAppForPassRequest(requestID: requestID)
+            
+            // Wait for response and read raw plist data
+            let responseFileURL = try passResponseFileURL(requestID: requestID)
+            let timeoutAt = Date().addingTimeInterval(120)
+            
+            while Date() < timeoutAt {
+                if FileManager.default.fileExists(atPath: responseFileURL.path) {
+                    let data = try Data(contentsOf: responseFileURL)
+                    let propertyList = try PropertyListSerialization.propertyList(from: data, format: nil)
+                    
+                    guard let payload = propertyList as? [String: Any],
+                          let ok = payload["ok"] as? Bool else {
+                        throw PassBridgeError.invalidResponse
+                    }
+                    
+                    try? removePassResponseFile(requestID: requestID)
+                    
+                    if !ok {
+                        let errorMessage = payload["error"] as? String ?? "Unknown error"
+                        throw PassError.executionFailed(errorMessage)
+                    }
+                    
+                    var response = response(for: configuration)
+                    response["ok"] = true
+                    response["entry"] = normalizedEntryName
+                    response["credentials"] = payload["credentials"] ?? []
+                    return response
+                }
+                
+                Thread.sleep(forTimeInterval: 0.25)
+            }
+            
+            throw PassBridgeError.responseTimedOut
+            
+        } catch {
+            return errorResponse(for: error)
+        }
+    }
+    
+    private func createPasskey(payload: [String: Any]) -> [String: Any] {
+        do {
+            guard let entryName = payload["entry"] as? String,
+                  let rpId = payload["rpId"] as? String,
+                  let userId = payload["userId"] as? String,
+                  let userName = payload["userName"] as? String else {
+                throw PassError.executionFailed("Missing required passkey parameters.")
+            }
+            
+            let normalizedEntryName = try normalizedEntryName(from: entryName)
+            let configuration = try resolvedStoreConfiguration()
+            
+            // Write extended pass request with passkey parameters
+            let requestID = UUID().uuidString
+            try removePassResponseFile(requestID: requestID)
+            try writePasskeyRequest(
+                requestID: requestID,
+                command: "createPasskey",
+                entryName: normalizedEntryName,
+                rpId: rpId,
+                userId: userId,
+                userName: userName
+            )
+            try launchContainingAppForPassRequest(requestID: requestID)
+            
+            let passResponse = try waitForPassResponse(requestID: requestID)
+            guard passResponse.ok else {
+                throw PassError.executionFailed(passResponse.errorMessage ?? "Unable to create passkey.")
+            }
+            
+            var response = response(for: configuration)
+            response["ok"] = true
+            response["entry"] = normalizedEntryName
+            // Parse credentialId from output if needed
+            response["credentialId"] = "" // Placeholder
+            return response
+        } catch {
+            return errorResponse(for: error)
+        }
+    }
+    
+    private func authenticatePasskey(payload: [String: Any]) -> [String: Any] {
+        do {
+            guard let entryName = payload["entry"] as? String,
+                  let credentialId = payload["credentialId"] as? String,
+                  let challenge = payload["challenge"] as? String else {
+                throw PassError.executionFailed("Missing required authentication parameters.")
+            }
+            
+            let normalizedEntryName = try normalizedEntryName(from: entryName)
+            let configuration = try resolvedStoreConfiguration()
+            
+            // Write extended pass request with authentication parameters
+            let requestID = UUID().uuidString
+            try removePassResponseFile(requestID: requestID)
+            try writePasskeyRequest(
+                requestID: requestID,
+                command: "authenticatePasskey",
+                entryName: normalizedEntryName,
+                credentialId: credentialId,
+                challenge: challenge
+            )
+            try launchContainingAppForPassRequest(requestID: requestID)
+            
+            let passResponse = try waitForPassResponse(requestID: requestID)
+            guard passResponse.ok else {
+                throw PassError.executionFailed(passResponse.errorMessage ?? "Unable to authenticate with passkey.")
+            }
+            
+            var response = response(for: configuration)
+            response["ok"] = true
+            response["entry"] = normalizedEntryName
+            response["credentialId"] = credentialId
+            // Parse signature from output if needed
+            response["signature"] = "" // Placeholder
+            return response
+        } catch {
+            return errorResponse(for: error)
+        }
+    }
+    
+    private func writePasskeyRequest(
+        requestID: String,
+        command: String,
+        entryName: String,
+        rpId: String? = nil,
+        userId: String? = nil,
+        userName: String? = nil,
+        credentialId: String? = nil,
+        challenge: String? = nil
+    ) throws {
+        var payload: [String: Any] = [
+            "command": command,
+            "entry": entryName,
+        ]
+        
+        if let rpId = rpId {
+            payload["rpId"] = rpId
+        }
+        if let userId = userId {
+            payload["userId"] = userId
+        }
+        if let userName = userName {
+            payload["userName"] = userName
+        }
+        if let credentialId = credentialId {
+            payload["credentialId"] = credentialId
+        }
+        if let challenge = challenge {
+            payload["challenge"] = challenge
+        }
+
+        let plistData = try PropertyListSerialization.data(fromPropertyList: payload, format: .binary, options: 0)
+        let fileURL = try passRequestFileURL(requestID: requestID)
+        try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try plistData.write(to: fileURL, options: .atomic)
     }
 }
