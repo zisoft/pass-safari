@@ -617,7 +617,6 @@ code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.8em;
   line-height: 1.5;
-  white-space: nowrap;
   overflow: auto;
   resize: none;
 }

@@ -11,6 +11,24 @@ A Safari extension for the [pass](https://www.passwordstore.org/) standard Unix 
 - Secure architecture with minimal permissions
 - Simple file-based communication between extension and app
 
+## Screenshots
+
+![Password entries](assets/entries.png)
+Password entries
+
+![Create/edit entry](assets/edit-entry.png)
+Create/edit entry
+
+![Entry details](assets/details.png)
+Entry details
+
+![Entry with OTP](assets/otp.png)
+Entry details with OTP
+
+![Suggestions for current URL](assets/suggestions.png)
+Suggestions for the current URL
+
+
 ## Installation
 
 ### Requirements
@@ -18,6 +36,8 @@ A Safari extension for the [pass](https://www.passwordstore.org/) standard Unix 
 - macOS 11.0 or later
 - Xcode 13.0 or later (for building)
 - pass password manager installed and configured
+- pass-otp extension
+
 
 ### Building from Source
 

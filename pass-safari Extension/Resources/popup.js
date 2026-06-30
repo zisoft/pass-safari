@@ -348,6 +348,8 @@ async function onEditEntryClick() {
 }
 
 function showPanel(panel) {
+  stopOTPRefreshLoop();
+
   detailPanelElement.hidden = true;
   editPanelElement.hidden = true;
   mainPanelElement.hidden = true;
@@ -365,15 +367,16 @@ function openEditPanel() {
   editTogglePasswordButton.innerHTML = editTogglePasswordButton.dataset.show_icon;
   editTogglePasswordButton.title = "Show password";
 
+  editPasswordInput.value = "";
+  editUsernameInput.value = "";
+  editURLInput.value = "";
+  editContentTextarea.value = "";
+
   if(newEntry) {
     editTitleElement.hidden = true;
     editTitleInput.hidden = false;
     selectedEntry = null;
     selectedEntryDetails = null;
-    editPasswordInput.value = "";
-    editUsernameInput.value = "";
-    editURLInput.value = "";
-    editContentTextarea.value = "";
     editTitleInput.value = "";
     editTitleInput.focus();
 
