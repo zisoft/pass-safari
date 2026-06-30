@@ -593,6 +593,18 @@ code {
   flex-direction: column;
 }
 
+.hint {
+  margin-bottom: 1em;
+  font-size: 0.8em;
+  color: color-mix(in srgb, CanvasText 70%, transparent);
+}
+
+.hint pre {
+  display: inline-block;
+  margin: 0;
+  font-size: 1.2em;
+}
+
 .edit-textarea {
   box-sizing: border-box;
   width: 100%;
