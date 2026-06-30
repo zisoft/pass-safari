@@ -42,12 +42,10 @@ A Safari extension for the [pass](https://www.passwordstore.org/) standard Unix 
 
 ### Simple File-Based Communication
 
-The extension uses a simple, proven approach with files in `~/.pass-safari/`:
+The extension uses a simple, proven approach with files in the bundle's cache directory:
 
 ```
-~/.pass-safari/
-├── PasswordStoreSelection.plist       # Selected password store path
-├── PasswordStoreSelectionEvent.plist  # Store selection events
+~/Library/Group Containers/group.de.zisoft.pass-safari/Library/Caches/pass-safari
 ├── PassRequest-*.plist                # Request files from extension
 ├── PassResponse-*.plist               # Response files from app
 ├── URLIndexCache.json                 # Cached URL mappings
@@ -56,10 +54,9 @@ The extension uses a simple, proven approach with files in `~/.pass-safari/`:
 
 ### Why This Approach?
 
-1. **Extension is sandboxed** - Can only access `~/.pass-safari/` and user-selected folders
-2. **App is NOT sandboxed** - Can execute `/opt/homebrew/bin/pass` without issues
-3. **No App Group complexity** - No permission prompts, simple file operations
-4. **Works reliably** - Standard approach used by many Safari extensions
+1. **Extension is sandboxed** - Can only access app group directory
+2. **App is NOT sandboxed** - Can execute the `pass` executable without issues
+3. **Works reliably** - Standard approach used by many Safari extensions
 
 ### Components
 
@@ -67,27 +64,26 @@ The extension uses a simple, proven approach with files in `~/.pass-safari/`:
    - Runs in Safari's sandboxed environment
    - Lists password entries
    - Manages UI and user interactions
-   - Creates pass request files in `~/.pass-safari/`
+   - Creates pass request files in the app group cache directory
 
 2. **Companion App** (`pass-safari`)
    - Runs WITHOUT sandbox (needs to execute `pass`)
-   - Reads password files via security-scoped bookmarks
    - Executes pass commands
    - Generates OTP codes
-   - Writes pass response files to `~/.pass-safari/`
+   - Writes pass response files to the app group cache directory
 
 ### Communication Flow
 
 ```
-Safari Extension → PassRequest-*.plist (in ~/.pass-safari/)
+Safari Extension → PassRequest-*.plist (in the app group cache directory)
                     ↓
 Companion App reads request
                     ↓
-Executes: /opt/homebrew/bin/pass show entry-name
+Executes: pass executable to perform the required action
                     ↓
-Companion App → PassResponse-*.plist (in ~/.pass-safari/)
+Companion App → PassResponse-*.plist (in the app group cache directory)
                     ↓
-Safari Extension reads response → Displays password
+Safari Extension reads response → Displays result
 ```
 
 ## Usage
@@ -95,15 +91,13 @@ Safari Extension reads response → Displays password
 ### First Run
 
 1. Launch the pass-safari app
-2. Choose your password store folder when prompted
-3. The location is saved with a security-scoped bookmark
 
 ### In Safari
 
 1. Navigate to a website
 2. Click the pass-safari extension icon
-3. Select a password entry from the list
-4. The password is automatically filled or copied
+3. Click on a password entry from the list
+4. The password is automatically filled
 
 ### URL Matching
 
@@ -112,11 +106,19 @@ The extension automatically suggests passwords based on:
 - Subdomain matches
 - URL fields in password entries
 
+For quick access, a `URLIndexCache.json` file is created in the app group container cache directory `~/Library/Group Containers/group.de.zisoft.pass-safari/Library/Caches/pass-safari`. On the first run this may take some time, so please be patient. On subsequent runs only the changed entries are used to update the cache file, which is much faster. All fields from the password entries starting with one of:
+
+- `url`
+- `website`
+- `site`
+
+are stored in the cache. So you can easily use multiple URLs in one password entry like `url:`, `url2:`, etc.
+
+
 ## Security
 
 - Extension runs in macOS App Sandbox with minimal permissions
-- Companion app uses security-scoped bookmarks for password store access
-- Communication via simple files in `~/.pass-safari/`
+- Communication via simple files in `~/Library/Group Containers/group.de.zisoft.pass-safari/Library/Caches/pass-safari`
 - No network access required
 - No telemetry or tracking
 
@@ -129,10 +131,10 @@ pass-safari/
 ├── pass-safari/                       # Companion app (NOT sandboxed)
 │   ├── AppDelegate.swift              # App lifecycle & pass execution
 │   ├── ViewController.swift           # UI
-│   └── pass-safari.entitlements       # Empty (no sandbox)
+│   └── pass-safari.entitlements       # AppGroup
 ├── pass-safari Extension/             # Safari extension (sandboxed)
 │   ├── SafariWebExtensionHandler.swift  # Native messaging
-│   ├── pass-safari Extension.entitlements  # Sandbox + ~/.pass-safari/ access
+│   ├── pass-safari Extension.entitlements  # AppGroup, ReadOnly access to `~/.password-store`
 │   └── Resources/
 │       ├── popup.html                 # Extension UI
 │       ├── popup.js                   # Extension logic
@@ -142,33 +144,21 @@ pass-safari/
 
 ### Key Files
 
-- `SafariWebExtensionHandler.swift` - Handles messages from JavaScript, manages `~/.pass-safari/`
-- `AppDelegate.swift` - Executes pass commands, reads/writes `~/.pass-safari/`
+- `SafariWebExtensionHandler.swift` - Handles messages from JavaScript
+- `AppDelegate.swift` - Executes pass commands
 - `popup.js` - Extension UI logic and user interactions
 
 ### Entitlements
 
 **Extension** (`pass-safari Extension.entitlements`):
 - `com.apple.security.app-sandbox` - Required for Safari extensions
-- `com.apple.security.files.bookmarks.app-scope` - Persistent store access
 - `com.apple.security.files.user-selected.read-only` - Password store access
-- `com.apple.security.temporary-exception.files.home-relative-path.read-write` - Access to `~/.pass-safari/`
 - `com.apple.security.temporary-exception.files.home-relative-path.read-only` - Read password store
 
 **Companion App** (`pass-safari.entitlements`):
-- Empty! No sandbox, so it can execute `/opt/homebrew/bin/pass`
+- Empty! No sandbox, so it can execute `pass` executable
 
 ## Troubleshooting
-
-### Extension not appearing in Safari
-- Make sure the app is in `/Applications/` or `~/Applications/`
-- Restart Safari completely
-- Check Safari Preferences → Extensions
-
-### Permission denied errors
-- Ensure `~/.pass-safari/` exists and is writable
-- Check that the companion app has been run at least once
-- Verify the password store folder was properly selected
 
 ### Pass not found
 The app looks for pass in:
@@ -178,13 +168,7 @@ The app looks for pass in:
 - `/bin/pass`
 - Or via `which pass` in your PATH
 
-Make sure pass is installed: `brew install pass`
-
-### "Failed to run 'pass': The file "pass" doesn't exist"
-This means the companion app couldn't find the pass executable. Install it with:
-```bash
-brew install pass
-```
+Make sure pass is installed and properly set up.
 
 ### Debug logging
 Check Console.app and filter by "pass-safari" for detailed logs.
