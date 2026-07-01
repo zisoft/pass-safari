@@ -4,10 +4,12 @@ A Safari extension for the [pass](https://www.passwordstore.org/) standard Unix 
 
 ## Features
 
-- Access your pass password store from Safari
+- Manage your pass password store from Safari
+- Create / update / delete entries
 - Auto-suggest passwords based on the current URL
 - Support for TOTP/OTP codes
 - Integrated password generator
+- Sync the store with git
 - Secure architecture with minimal permissions
 - Simple file-based communication between extension and app
 
