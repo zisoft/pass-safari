@@ -122,20 +122,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
 
-
-
-        // do {
-        //   let configuration = try resolvedStoreConfiguration()
-        //   try withStoreAccess(configuration) {
-        //       try syncStore(configuration: configuration)
-        //   }
-        // } catch {
-        // }
-        // exit(0)
-
-        // handlePassRequest(requestID: "300A2D70-451C-4D0A-8017-48C3836308F6")
-        // exit(0)
-
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
             guard !self.suppressAutomaticWindowPresentation else {
                 return
@@ -272,8 +258,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func handlePassRequest(requestID: String?) {
         guard let requestID, !requestID.isEmpty else {
+            NSLog("[App] handlePassRequest called with empty requestID")
             return
         }
+
+        NSLog("[App] Handling pass request: %@", requestID)
 
         defer {
             DispatchQueue.main.async {
@@ -287,6 +276,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
 
             let request = try readPassRequest(requestID: requestID)
+            NSLog("[App] Pass request read: command=%@, entry=%@", request.command.rawValue, request.entry ?? "(none)")
             let response: [String: Any]
 
             switch request.command {
@@ -354,7 +344,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             case .syncStore:
                 let configuration = try resolvedStoreConfiguration()
                 try withStoreAccess(configuration) {
-                    try syncStore(configuration: configuration)
+                    try gitPull(configuration: configuration)
+                    try gitPush(configuration: configuration)
                 }
 
                 response = [
@@ -495,12 +486,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func readPassRequest(requestID: String) throws -> PassRequest {
         let filename = try passRequestFileURL(requestID: requestID)
+        NSLog("[App] Reading pass request from: %@", filename.path)
+        
+        guard FileManager.default.fileExists(atPath: filename.path) else {
+            NSLog("[App] Pass request file does not exist!")
+            throw CocoaError(.fileNoSuchFile)
+        }
+        
         let data = try Data(contentsOf: filename)
         let propertyList = try PropertyListSerialization.propertyList(from: data, format: nil)
 
         guard let payload = propertyList as? [String: Any],
               let rawCommand = payload["command"] as? String,
               let command = PassRequestCommand(rawValue: rawCommand) else {
+            NSLog("[App] Invalid pass request format")
             throw CocoaError(.fileReadCorruptFile)
         }
 
@@ -514,8 +513,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func writePassResponse(requestID: String, payload: [String: Any]) throws {
         let plistData = try PropertyListSerialization.data(fromPropertyList: payload, format: .binary, options: 0)
         let fileURL = try passResponseFileURL(requestID: requestID)
+        NSLog("[App] Writing pass response to: %@", fileURL.path)
         try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
         try plistData.write(to: fileURL, options: .atomic)
+        NSLog("[App] Pass response written successfully")
     }
 
     private func removePassRequestFile(requestID: String) throws {
@@ -939,7 +940,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func syncStore(configuration: StoreConfiguration) throws {
+    private func gitPull(configuration: StoreConfiguration) throws {
         let executablePath = try resolvedPassExecutablePath()
         let process = Process()
         let inputPipe = Pipe()
@@ -975,6 +976,44 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             throw PassError.executionFailed(message)
         }
     }
+
+    private func gitPush(configuration: StoreConfiguration) throws {
+        let executablePath = try resolvedPassExecutablePath()
+        let process = Process()
+        let inputPipe = Pipe()
+        let outputPipe = Pipe()
+        let errorPipe = Pipe()
+
+        process.executableURL = URL(fileURLWithPath: executablePath)
+        process.arguments = ["git", "push"]
+        process.standardInput = inputPipe
+        process.standardOutput = outputPipe
+        process.standardError = errorPipe
+
+        var environment = ProcessInfo.processInfo.environment
+        environment["PATH"] = executionPathEnvironment()
+        environment["HOME"] = currentUserHomeDirectoryPath()
+        environment["PASSWORD_STORE_DIR"] = configuration.url.path
+        environment["LANG"] = environment["LANG"] ?? "en_US.UTF-8"
+        process.environment = environment
+
+        do {
+            try process.run()
+        } catch {
+            throw PassError.executionFailed("Failed to run 'pass git push': \(error.localizedDescription)")
+        }
+
+        process.waitUntilExit()
+
+        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+        let errorOutput = String(data: errorData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        guard process.terminationStatus == 0 else {
+            let message = errorOutput.isEmpty ? "'pass git push' exited with status \(process.terminationStatus)." : errorOutput
+            throw PassError.executionFailed(message)
+        }
+    }
+
 
     private func resolvedPassExecutablePath() throws -> String {
         let fileManager = FileManager.default

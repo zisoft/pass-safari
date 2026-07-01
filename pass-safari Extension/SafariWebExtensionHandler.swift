@@ -84,6 +84,7 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
         let requestID: String
         let ok: Bool
         let output: String?
+        let stderr: String?
         let otpCode: String?
         let otpType: String?
         let otpPeriod: Int?
@@ -393,6 +394,12 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
 
             var response = response(for: configuration)
             response["ok"] = true
+            if let output = passResponse.output {
+                response["output"] = output
+            }
+            if let stderr = passResponse.stderr {
+                response["stderr"] = stderr
+            }
             return response
         } catch {
             return errorResponse(for: error)
@@ -601,9 +608,11 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
 
     private func waitForPassResponse(requestID: String) throws -> PassResponse {
         let timeoutAt = Date().addingTimeInterval(120)
+        NSLog("[Extension] Waiting for pass response: %@", requestID)
 
         while Date() < timeoutAt {
             if let response = try? readPassResponseFromFile(requestID: requestID), response.requestID == requestID {
+                NSLog("[Extension] Received pass response")
                 try? removePassResponseFile(requestID: requestID)
                 return response
             }
@@ -611,6 +620,7 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
             Thread.sleep(forTimeInterval: 0.25)
         }
 
+        NSLog("[Extension] Pass response timeout")
         throw PassBridgeError.responseTimedOut
     }
 
@@ -626,8 +636,10 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
 
         let plistData = try PropertyListSerialization.data(fromPropertyList: payload, format: .binary, options: 0)
         let fileURL = try passRequestFileURL(requestID: requestID)
+        NSLog("[Extension] Writing pass request to: %@", fileURL.path)
         try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
         try plistData.write(to: fileURL, options: .atomic)
+        NSLog("[Extension] Pass request written successfully")
     }
 
     private func readPassResponseFromFile(requestID: String) throws -> PassResponse {
@@ -644,6 +656,7 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
             requestID: payloadRequestID,
             ok: ok,
             output: payload["output"] as? String,
+            stderr: payload["stderr"] as? String,
             otpCode: payload["otp"] as? String,
             otpType: payload["otpType"] as? String,
             otpPeriod: payload["otpPeriod"] as? Int,
@@ -670,6 +683,7 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
     }
 
     private func launchContainingAppForPassRequest(requestID: String) throws {
+        NSLog("[Extension] Launching app for pass request: %@", requestID)
         try launchContainingApp(urlHost: runPassURLHost, requestID: requestID, unavailableError: PassBridgeError.companionUnavailable)
     }
 
