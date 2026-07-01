@@ -1647,20 +1647,13 @@ async function onSyncClick() {
     });
 
     if (!response?.ok) {
-      const errorMsg = response?.error || "Unable to sync.";
-      const debugInfo = response?.output || response?.stderr || "(no details)";
-      console.error("[syncStore] Error:", errorMsg, "Debug:", debugInfo);
-      throw new Error(errorMsg);
+      throw new Error(response?.error || "Unable to sync.");
     }
 
-    const output = response.output || "";
-    const stderr = response.stderr || "";
-    console.log("[syncStore] Success. Output:", output, "Stderr:", stderr);
-    
-    // loadEntries();
-    setStatus("Synced successfully!");
+    setStatus("");
+	clearSelectedEntry();
 	loadEntries();
-    setTimeout(() => setStatus(""), 2000);
+
   } catch (error) {
     setStatus(error.message || "Unable to sync.", true);
   } finally {
