@@ -209,6 +209,8 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
             return deleteEntry(entryName: payload["entry"] as? String)
         case "copyText":
             return copyText(payload["text"] as? String)
+        case "syncStore":
+            return syncStore()
         default:
             return [
                 "ok": false,
@@ -375,6 +377,23 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
             }
 
             return ["ok": true]
+        } catch {
+            return errorResponse(for: error)
+        }
+    }
+
+    private func syncStore() -> [String: Any] {
+        do {
+            let configuration = try resolvedStoreConfiguration()
+            let passResponse = try requestPassResponse(command: "syncStore", entryName: "dummy")
+
+            guard passResponse.ok else {
+                throw PassError.executionFailed(passResponse.errorMessage ?? "Unable to sync.")
+            }
+
+            var response = response(for: configuration)
+            response["ok"] = true
+            return response
         } catch {
             return errorResponse(for: error)
         }

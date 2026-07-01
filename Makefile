@@ -4,6 +4,7 @@ PROJECT_NAME=pass-safari
 EXTENSION_TARGET=pass-safari
 
 all: build run
+# all: build
 
 build:
 	xcodebuild -project "$(PROJECT_NAME).xcodeproj" \

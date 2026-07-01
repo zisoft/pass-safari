@@ -88,6 +88,7 @@ private enum PassRequestCommand: String {
     case getEntryOTP
     case updateEntry
     case deleteEntry
+    case syncStore
 }
 
 private enum PassError: LocalizedError {
@@ -120,6 +121,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var mainWindowController: NSWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+
+
+
+        // do {
+        //   let configuration = try resolvedStoreConfiguration()
+        //   try withStoreAccess(configuration) {
+        //       try syncStore(configuration: configuration)
+        //   }
+        // } catch {
+        // }
+        // exit(0)
+
+        // handlePassRequest(requestID: "300A2D70-451C-4D0A-8017-48C3836308F6")
+        // exit(0)
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
             guard !self.suppressAutomaticWindowPresentation else {
@@ -336,6 +351,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     "requestId": requestID,
                     "ok": true
                 ]
+            case .syncStore:
+                let configuration = try resolvedStoreConfiguration()
+                try withStoreAccess(configuration) {
+                    try syncStore(configuration: configuration)
+                }
+
+                response = [
+                    "requestId": requestID,
+                    "ok": true
+                ]
+
             }
 
             try writePassResponse(requestID: requestID, payload: response)
@@ -468,7 +494,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func readPassRequest(requestID: String) throws -> PassRequest {
-        let data = try Data(contentsOf: passRequestFileURL(requestID: requestID))
+        let filename = try passRequestFileURL(requestID: requestID)
+        let data = try Data(contentsOf: filename)
         let propertyList = try PropertyListSerialization.propertyList(from: data, format: nil)
 
         guard let payload = propertyList as? [String: Any],
@@ -907,7 +934,44 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let errorOutput = String(data: errorData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
         guard process.terminationStatus == 0 else {
-            let message = errorOutput.isEmpty ? "'pass insert' exited with status \(process.terminationStatus)." : errorOutput
+            let message = errorOutput.isEmpty ? "'pass remove' exited with status \(process.terminationStatus)." : errorOutput
+            throw PassError.executionFailed(message)
+        }
+    }
+
+    private func syncStore(configuration: StoreConfiguration) throws {
+        let executablePath = try resolvedPassExecutablePath()
+        let process = Process()
+        let inputPipe = Pipe()
+        let outputPipe = Pipe()
+        let errorPipe = Pipe()
+
+        process.executableURL = URL(fileURLWithPath: executablePath)
+        process.arguments = ["git", "pull"]
+        process.standardInput = inputPipe
+        process.standardOutput = outputPipe
+        process.standardError = errorPipe
+
+        var environment = ProcessInfo.processInfo.environment
+        environment["PATH"] = executionPathEnvironment()
+        environment["HOME"] = currentUserHomeDirectoryPath()
+        environment["PASSWORD_STORE_DIR"] = configuration.url.path
+        environment["LANG"] = environment["LANG"] ?? "en_US.UTF-8"
+        process.environment = environment
+
+        do {
+            try process.run()
+        } catch {
+            throw PassError.executionFailed("Failed to run 'pass git pull': \(error.localizedDescription)")
+        }
+
+        process.waitUntilExit()
+
+        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+        let errorOutput = String(data: errorData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        guard process.terminationStatus == 0 else {
+            let message = errorOutput.isEmpty ? "'pass git pull' exited with status \(process.terminationStatus)." : errorOutput
             throw PassError.executionFailed(message)
         }
     }

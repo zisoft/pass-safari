@@ -54,6 +54,7 @@ const saveEditButton = document.getElementById("save-edit");
 const entriesHeaderTitle = document.getElementById("entries-header-title");
 const entriesCounter = document.getElementById("entries-counter");
 const suggestionsCounter = document.getElementById("suggestions-counter");
+const syncButton = document.getElementById("sync-button");
 const newEntryButton = document.getElementById("new-entry");
 
 // Password generator
@@ -100,6 +101,7 @@ async function init() {
   deleteEditButton.addEventListener("click", onDeleteEntryClicked);
   cancelEditButton.addEventListener("click", onCloseEditClick);
   saveEditButton.addEventListener("click", onSaveEditClick);
+  syncButton.addEventListener("click", onSyncClick);
   newEntryButton.addEventListener("click", onNewEntryClick);
   editTogglePasswordButton.addEventListener("click", onEditTogglePasswordClick);
   passwordGenerateButton.addEventListener("click", generatePassword);
@@ -1634,3 +1636,26 @@ function generatePassword() {
 
   editPasswordInput.value = all.join('');
 }
+
+async function onSyncClick() {
+  syncButton.disabled = true;
+  setStatus("Syncing with git...");
+
+  try {
+    const response = await sendNativeMessage({
+      command: "syncStore"
+    });
+
+    if (!response?.ok) {
+      throw new Error(response?.error || "Unable to sync.");
+    }
+
+    // loadEntries();
+    setStatus("");
+  } catch {
+    setStatus(error.message || "Unable to sync.", true);
+  } finally {
+    syncButton.disabled = false;
+  }
+}
+

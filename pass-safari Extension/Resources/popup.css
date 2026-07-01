@@ -68,6 +68,11 @@ body {
   border-bottom: 1px solid var(--line-color);
 }
 
+.header-buttons {
+  display: flex;
+  gap: 0.8em;
+}
+
 .icon-text {
   flex: 1 1 auto;
   display: flex;
