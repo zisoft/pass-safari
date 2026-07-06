@@ -227,7 +227,7 @@ function onOpenURLClick() {
     return;
   }
 
-  window.location.href = url;
+  tabsAPI.create({ url: url });
 }
 
 function onTogglePasswordClick() {
