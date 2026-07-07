@@ -14,3 +14,11 @@ build:
 
 run:
 	open build/$(PROJECT_NAME).app
+
+clean:
+	@xcodebuild -project "$(PROJECT_NAME).xcodeproj" \
+		-scheme "$(PROJECT_NAME)" \
+		-configuration Debug \
+		clean
+	@rm -rf build
+
