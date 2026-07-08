@@ -10,15 +10,10 @@ import Darwin
 
 private let appGroupIdentifier = "group.de.zisoft.pass-safari"
 private let sharedContainerDirectoryName = "pass-safari"
-private let storeBookmarkKey = "PasswordStoreBookmark"
-private let storePathKey = "PasswordStorePath"
-private let storeSelectionFileName = "PasswordStoreSelection.plist"
-private let storeSelectionEventFileName = "PasswordStoreSelectionEvent.plist"
 private let passRequestFileNamePrefix = "PassRequest-"
 private let passResponseFileNamePrefix = "PassResponse-"
 private let urlIndexCacheFileName = "URLIndexCache.json"
 private let urlIndexRefreshLockFileName = "URLIndexRefresh.lock"
-private let chooseStoreFolderURLHost = "choose-store-folder"
 private let runPassURLHost = "run-pass"
 private let refreshURLIndexURLHost = "refresh-url-index"
 private let mainWindowControllerStoryboardIdentifier = "MainWindowController"
@@ -134,15 +129,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   func application(_ application: NSApplication, open urls: [URL]) {
     suppressAutomaticWindowPresentation = true
 
-    if let chooserURL = urls.first(where: isChooseStoreFolderURL(_:)) {
-      let requestID = requestID(from: chooserURL)
-
-      DispatchQueue.main.async {
-        self.presentStoreChooser(requestID: requestID)
-      }
-      return
-    }
-
     if let passURL = urls.first(where: isRunPassURL(_:)) {
       let requestID = requestID(from: passURL)
 
@@ -196,10 +182,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     return trimmedHost.hasPrefix("www.") ? String(trimmedHost.dropFirst(4)) : trimmedHost
   }
 
-  private func isChooseStoreFolderURL(_ url: URL) -> Bool {
-    url.scheme == "pass-safari" && url.host == chooseStoreFolderURLHost
-  }
-
   private func isRunPassURL(_ url: URL) -> Bool {
     url.scheme == "pass-safari" && url.host == runPassURLHost
   }
@@ -213,50 +195,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
       .queryItems?
       .first(where: { $0.name == "requestId" })?
       .value
-  }
-
-  private func presentStoreChooser(requestID: String?) {
-    defer {
-      NSApp.terminate(nil)
-    }
-
-    NSApp.windows.forEach { $0.orderOut(nil) }
-    //_ = NSRunningApplication.current.activate(options: [.activateIgnoringOtherApps])
-
-    let panel = NSOpenPanel()
-    panel.canChooseDirectories = true
-    panel.canChooseFiles = false
-    panel.allowsMultipleSelection = false
-    panel.canCreateDirectories = false
-    panel.resolvesAliases = true
-    panel.prompt = "Choose Folder"
-    panel.message = "Choose your pass password-store folder."
-    panel.directoryURL = initialDirectoryURL()
-
-    guard panel.runModal() == .OK, let selectedURL = panel.url?.standardizedFileURL else {
-      if let requestID {
-        try? writeStoreSelectionEvent(requestID: requestID, status: "cancelled")
-      }
-      return
-    }
-
-    do {
-      let bookmarkData = try selectedURL.bookmarkData(
-        options: [.withSecurityScope],
-        includingResourceValuesForKeys: nil,
-        relativeTo: nil
-      )
-
-      try persistStoreSelection(path: selectedURL.path, bookmarkData: bookmarkData)
-      if let requestID {
-        try writeStoreSelectionEvent(requestID: requestID, status: "selected")
-      }
-    } catch {
-      NSLog("Failed to store selected password-store bookmark: %@", error.localizedDescription)
-      if let requestID {
-        try? writeStoreSelectionEvent(requestID: requestID, status: "cancelled")
-      }
-    }
   }
 
   private func handlePassRequest(requestID: String?) {
@@ -453,46 +391,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   }
 
   private func initialDirectoryURL() -> URL {
-    if let storedSelection = storedStoreSelection() {
-      return URL(fileURLWithPath: storedSelection.path, isDirectory: true)
-    }
-
     let defaultURL = URL(fileURLWithPath: resolvedDefaultStorePath(), isDirectory: true)
     return defaultURL.deletingLastPathComponent()
-  }
-
-  private func persistStoreSelection(path: String, bookmarkData: Data) throws {
-    let payload: [String: Any] = [
-      storePathKey: path,
-      storeBookmarkKey: bookmarkData,
-    ]
-
-    let plistData = try PropertyListSerialization.data(
-      fromPropertyList: payload, format: .binary, options: 0)
-    let fileURL = try storeSelectionFileURL()
-    try FileManager.default.createDirectory(
-      at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-    try plistData.write(to: fileURL, options: .atomic)
-
-  }
-
-  private func storedStoreSelection() -> (path: String, bookmarkData: Data)? {
-    try? readStoreSelectionFromFile()
-  }
-
-  private func readStoreSelectionFromFile() throws -> (path: String, bookmarkData: Data) {
-    let data = try Data(contentsOf: storeSelectionFileURL())
-    let propertyList = try PropertyListSerialization.propertyList(from: data, format: nil)
-
-    guard let payload = propertyList as? [String: Any],
-      let path = payload[storePathKey] as? String,
-      let bookmarkData = payload[storeBookmarkKey] as? Data,
-      !path.isEmpty
-    else {
-      throw CocoaError(.fileReadCorruptFile)
-    }
-
-    return (path: path, bookmarkData: bookmarkData)
   }
 
   private func readPassRequest(requestID: String) throws -> PassRequest {
@@ -538,29 +438,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     if FileManager.default.fileExists(atPath: fileURL.path) {
       try FileManager.default.removeItem(at: fileURL)
     }
-  }
-
-  private func writeStoreSelectionEvent(requestID: String, status: String) throws {
-    let payload: [String: Any] = [
-      "requestId": requestID,
-      "status": status,
-    ]
-
-    let plistData = try PropertyListSerialization.data(
-      fromPropertyList: payload, format: .binary, options: 0)
-    let fileURL = try storeSelectionEventFileURL()
-    try FileManager.default.createDirectory(
-      at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-    try plistData.write(to: fileURL, options: .atomic)
-  }
-
-  private func storeSelectionFileURL() throws -> URL {
-    try resolvedSharedFileURL(
-      fileName: storeSelectionFileName, kind: .state, migrateLegacyFile: true)
-  }
-
-  private func storeSelectionEventFileURL() throws -> URL {
-    try resolvedSharedFileURL(fileName: storeSelectionEventFileName, kind: .state)
   }
 
   private func passRequestFileURL(requestID: String) throws -> URL {
@@ -663,17 +540,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   }
 
   private func resolvedStoreConfiguration() throws -> StoreConfiguration {
-    guard let storedSelection = storedStoreSelection() else {
-      return StoreConfiguration(
-        url: URL(fileURLWithPath: resolvedDefaultStorePath(), isDirectory: true),
-        requiresSecurityScope: false
-      )
-    }
-
-    // When not sandboxed, we can just use the path directly without security-scoped bookmarks
-    let url = URL(fileURLWithPath: storedSelection.path, isDirectory: true)
     return StoreConfiguration(
-      url: url,
+      url: URL(fileURLWithPath: resolvedDefaultStorePath(), isDirectory: true),
       requiresSecurityScope: false
     )
   }

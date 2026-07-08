@@ -13,10 +13,6 @@ import os.log
 private let appGroupIdentifier = "group.de.zisoft.pass-safari"
 private let defaultStorePath = "~/.password-store"
 private let sharedContainerDirectoryName = "pass-safari"
-private let storeBookmarkKey = "PasswordStoreBookmark"
-private let storePathKey = "PasswordStorePath"
-private let storeSelectionFileName = "PasswordStoreSelection.plist"
-private let storeSelectionEventFileName = "PasswordStoreSelectionEvent.plist"
 private let passRequestFileNamePrefix = "PassRequest-"
 private let passResponseFileNamePrefix = "PassResponse-"
 private let urlIndexCacheFileName = "URLIndexCache.json"
@@ -431,29 +427,12 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
   }
 
   private func resolvedStoreConfiguration() throws -> StoreConfiguration {
-    guard let storedSelection = storedStoreSelection() else {
-      let path = resolvedDefaultStorePath()
-      return StoreConfiguration(
-        url: URL(fileURLWithPath: path, isDirectory: true),
-        displayPath: path,
-        usingDefaultStore: true,
-        requiresSecurityScope: false
-      )
-    }
-
-    var bookmarkIsStale = false
-    let url = try URL(
-      resolvingBookmarkData: storedSelection.bookmarkData,
-      options: [.withSecurityScope],
-      relativeTo: nil,
-      bookmarkDataIsStale: &bookmarkIsStale
-    ).standardizedFileURL
-
+    let path = resolvedDefaultStorePath()
     return StoreConfiguration(
-      url: url,
-      displayPath: storedSelection.path,
-      usingDefaultStore: false,
-      requiresSecurityScope: true
+      url: URL(fileURLWithPath: path, isDirectory: true),
+      displayPath: path,
+      usingDefaultStore: true,
+      requiresSecurityScope: false
     )
   }
 
@@ -754,62 +733,6 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
     }
   }
 
-  private func waitForStoreSelectionEvent(requestID: String) throws -> StoreSelectionEvent {
-    let timeoutAt = Date().addingTimeInterval(120)
-
-    while Date() < timeoutAt {
-      if let event = try? readStoreSelectionEventFromFile(), event.requestID == requestID {
-        try? removeStoreSelectionEventFile()
-        return event
-      }
-
-      Thread.sleep(forTimeInterval: 0.25)
-    }
-
-    throw StoreError.chooserTimedOut
-  }
-
-  private func removeStoreSelectionEventFile() throws {
-    let fileURL = try storeSelectionEventFileURL()
-    if FileManager.default.fileExists(atPath: fileURL.path) {
-      try FileManager.default.removeItem(at: fileURL)
-    }
-  }
-
-  private func readStoreSelectionEventFromFile() throws -> StoreSelectionEvent {
-    let data = try Data(contentsOf: storeSelectionEventFileURL())
-    let propertyList = try PropertyListSerialization.propertyList(from: data, format: nil)
-
-    guard let payload = propertyList as? [String: Any],
-      let requestID = payload["requestId"] as? String,
-      let rawStatus = payload["status"] as? String,
-      let status = StoreSelectionEventStatus(rawValue: rawStatus)
-    else {
-      throw CocoaError(.fileReadCorruptFile)
-    }
-
-    return StoreSelectionEvent(requestID: requestID, status: status)
-  }
-
-  private func storedStoreSelection() -> (path: String, bookmarkData: Data)? {
-    try? readStoreSelectionFromFile()
-  }
-
-  private func readStoreSelectionFromFile() throws -> (path: String, bookmarkData: Data) {
-    let data = try Data(contentsOf: storeSelectionFileURL())
-    let propertyList = try PropertyListSerialization.propertyList(from: data, format: nil)
-
-    guard let payload = propertyList as? [String: Any],
-      let path = payload[storePathKey] as? String,
-      let bookmarkData = payload[storeBookmarkKey] as? Data,
-      !path.isEmpty
-    else {
-      throw CocoaError(.fileReadCorruptFile)
-    }
-
-    return (path: path, bookmarkData: bookmarkData)
-  }
-
   private func rankedURLIndexMatches(
     for pageURL: String?, inventory: StoreInventory, cache: URLIndexCache?
   ) -> [URLIndexMatchCandidate] {
@@ -973,14 +896,6 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
     }
 
     return true
-  }
-
-  private func storeSelectionFileURL() throws -> URL {
-    try resolvedSharedFileURL(fileName: storeSelectionFileName)
-  }
-
-  private func storeSelectionEventFileURL() throws -> URL {
-    try resolvedSharedFileURL(fileName: storeSelectionEventFileName)
   }
 
   private func passRequestFileURL(requestID: String) throws -> URL {
