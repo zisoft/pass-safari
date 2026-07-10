@@ -174,7 +174,6 @@ pass-safari/
 
 **Extension** (`pass-safari Extension.entitlements`):
 - `com.apple.security.app-sandbox` - Required for Safari extensions
-- `com.apple.security.files.user-selected.read-only` - Password store access
 - `com.apple.security.temporary-exception.files.home-relative-path.read-only` - Read password store
 
 **Companion App** (`pass-safari.entitlements`):
