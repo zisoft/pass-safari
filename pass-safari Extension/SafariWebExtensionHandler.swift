@@ -204,7 +204,9 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
       return getEntryOTP(entryName: payload["entry"] as? String)
     case "updateEntry":
       return updateEntry(
-        entryName: payload["entry"] as? String, content: payload["content"] as? String)
+        entryName: payload["entry"] as? String,
+        content: payload["content"] as? String,
+        newEntryName: payload["new_name"] as? String)
     case "deleteEntry":
       return deleteEntry(entryName: payload["entry"] as? String)
     case "copyText":
@@ -322,7 +324,7 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
     }
   }
 
-  private func updateEntry(entryName: String?, content: String?) -> [String: Any] {
+  private func updateEntry(entryName: String?, content: String?, newEntryName: String?) -> [String: Any] {
     do {
       let normalizedEntryName = try normalizedEntryName(from: entryName)
 
@@ -334,7 +336,10 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
 
       let configuration = try resolvedStoreConfiguration()
       let passResponse = try requestPassResponse(
-        command: "updateEntry", entryName: normalizedEntryName, content: trimmedContent)
+        command: "updateEntry",
+        entryName: normalizedEntryName,
+        content: trimmedContent,
+        newEntryName: newEntryName)
 
       guard passResponse.ok else {
         throw PassError.executionFailed(passResponse.errorMessage ?? "Unable to update entry.")
@@ -594,13 +599,17 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
     try requestPassResponse(command: "getEntryDetails", entryName: entryName)
   }
 
-  private func requestPassResponse(command: String, entryName: String, content: String? = nil)
+  private func requestPassResponse(command: String, entryName: String, content: String? = nil, newEntryName: String? = nil)
     throws -> PassResponse
   {
     let requestID = UUID().uuidString
     try removePassResponseFile(requestID: requestID)
     try writePassRequest(
-      requestID: requestID, command: command, entryName: entryName, content: content)
+      requestID: requestID,
+      command: command,
+      entryName: entryName,
+      content: content,
+      newEntryName: newEntryName)
     try launchContainingAppForPassRequest(requestID: requestID)
 
     let response = try waitForPassResponse(requestID: requestID)
@@ -633,15 +642,20 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
   }
 
   private func writePassRequest(
-    requestID: String, command: String, entryName: String, content: String? = nil
+    requestID: String, command: String, entryName: String, content: String? = nil, newEntryName: String? = nil
   ) throws {
     var payload: [String: Any] = [
       "command": command,
       "entry": entryName,
+      "newEntryName": ""
     ]
 
     if let content = content {
       payload["content"] = content
+    }
+
+    if let newEntryName = newEntryName {
+      payload["newEntryName"] = newEntryName
     }
 
     let plistData = try PropertyListSerialization.data(

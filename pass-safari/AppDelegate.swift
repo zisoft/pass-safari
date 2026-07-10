@@ -27,6 +27,7 @@ private struct PassRequest {
   let command: PassRequestCommand
   let entry: String?
   let content: String?
+  let newEntryName: String?
 }
 
 private struct StoreInventoryEntry: Hashable {
@@ -262,9 +263,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
           throw PassError.executionFailed("Entry content is required.")
         }
 
+        let newEntryName = try normalizedEntryName(from: request.newEntryName)
+
         let configuration = try resolvedStoreConfiguration()
         try withStoreAccess(configuration) {
-          try updatePassEntry(entryName: entryName, content: content, configuration: configuration)
+          try updateRenamePassEntry(
+            entryName: entryName,
+            content: content,
+            newEntryName: newEntryName,
+            configuration: configuration)
         }
 
         response = [
@@ -418,7 +425,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     return PassRequest(
       command: command,
       entry: payload["entry"] as? String,
-      content: payload["content"] as? String
+      content: payload["content"] as? String,
+      newEntryName: payload["newEntryName"] as? String
     )
   }
 
@@ -781,6 +789,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     return output
   }
 
+  private func updateRenamePassEntry(
+    entryName: String,
+    content: String,
+    newEntryName: String,
+    configuration: StoreConfiguration
+  ) throws {
+    try updatePassEntry(entryName: entryName, content: content, configuration: configuration)
+
+    if entryName != newEntryName {
+      try renamePassEntry(entryName: entryName, newEntryName: newEntryName, configuration: configuration)
+    }
+  }
+
   private func updatePassEntry(
     entryName: String, content: String, configuration: StoreConfiguration
   ) throws {
@@ -825,6 +846,49 @@ class AppDelegate: NSObject, NSApplicationDelegate {
       let message =
         errorOutput.isEmpty
         ? "'pass insert' exited with status \(process.terminationStatus)." : errorOutput
+      throw PassError.executionFailed(message)
+    }
+  }
+
+  private func renamePassEntry(
+    entryName: String, newEntryName: String, configuration: StoreConfiguration
+  ) throws {
+    let executablePath = try resolvedPassExecutablePath()
+    let process = Process()
+    let inputPipe = Pipe()
+    let outputPipe = Pipe()
+    let errorPipe = Pipe()
+
+    process.executableURL = URL(fileURLWithPath: executablePath)
+    process.arguments = ["rename", entryName, newEntryName]
+    process.standardInput = inputPipe
+    process.standardOutput = outputPipe
+    process.standardError = errorPipe
+
+    var environment = ProcessInfo.processInfo.environment
+    environment["PATH"] = executionPathEnvironment()
+    environment["HOME"] = currentUserHomeDirectoryPath()
+    environment["PASSWORD_STORE_DIR"] = configuration.url.path
+    environment["LANG"] = environment["LANG"] ?? "en_US.UTF-8"
+    process.environment = environment
+
+    do {
+      try process.run()
+    } catch {
+      throw PassError.executionFailed("Failed to run 'pass insert': \(error.localizedDescription)")
+    }
+
+    process.waitUntilExit()
+
+    let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+    let errorOutput =
+      String(data: errorData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
+      ?? ""
+
+    guard process.terminationStatus == 0 else {
+      let message =
+        errorOutput.isEmpty
+        ? "'pass rename' exited with status \(process.terminationStatus)." : errorOutput
       throw PassError.executionFailed(message)
     }
   }

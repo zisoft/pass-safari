@@ -36,7 +36,6 @@ const editEntryButton = document.getElementById("edit-entry");
 const mainPanelElement = document.getElementById("main-panel");
 const editPanelElement = document.getElementById("edit-panel");
 const detailPanelElement = document.getElementById("detail-panel");
-const editTitleElement = document.getElementById("edit-title");
 const editTitleInput = document.getElementById("edit-title-input");
 const editPasswordInput = document.getElementById("edit-password-input");
 const editTogglePasswordButton = document.getElementById("edit-toggle-password");
@@ -375,8 +374,6 @@ function openEditPanel() {
   editContentTextarea.value = "";
 
   if(newEntry) {
-    editTitleElement.hidden = true;
-    editTitleInput.hidden = false;
     selectedEntry = null;
     selectedEntryDetails = null;
     editTitleInput.value = "";
@@ -394,9 +391,7 @@ function openEditPanel() {
     generatePassword();
   }
   else {
-    editTitleElement.textContent = `${selectedEntry}`;
-    editTitleElement.hidden = false;
-    editTitleInput.hidden = true;
+    editTitleInput.value = `${selectedEntry}`;
   }
 
   if(selectedEntryDetails) {
@@ -535,6 +530,7 @@ async function onSaveEditClick() {
       command: "updateEntry",
       entry: selectedEntry,
       content: content,
+	  new_name: editTitleInput.value
     });
 
     if (!response?.ok) {
