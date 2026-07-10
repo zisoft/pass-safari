@@ -323,8 +323,22 @@ function usernameFieldScore(element, passwordField) {
         score += 40;
     }
 
-    if (/(^|\b)(user(name)?|login|email|e-mail|identifier)(\b|$)/.test(metadata)) {
+    // Extended username keywords (including international terms)
+    if (/(^|\b)(user(name)?|login|email|e-?mail|identifier|account|member|customer|benutzername|benutzer|anmeldename)(\b|$)/.test(metadata)) {
         score += 80;
+    }
+
+    // Additional weaker hints
+    if (/(^|\b)(name|id|handle|alias|mail)(\b|$)/.test(metadata)) {
+        score += 30;
+    }
+
+    // Include label text if available
+    if (element instanceof HTMLInputElement && element.labels && element.labels.length > 0) {
+        const labelText = [...element.labels].map((label) => label.textContent || "").join(" ").toLowerCase();
+        if (/(^|\b)(user(name)?|login|email|e-?mail|identifier|account|member|customer|benutzername|benutzer|anmeldename)(\b|$)/.test(labelText)) {
+            score += 60;
+        }
     }
 
     if (passwordField instanceof HTMLElement) {
