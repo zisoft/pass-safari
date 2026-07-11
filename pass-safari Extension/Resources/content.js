@@ -226,6 +226,11 @@ function otpFieldScore(element) {
         return Number.NEGATIVE_INFINITY;
     }
 
+    // Exclude fields that are clearly username fields
+    if (autocomplete === "username" || autocomplete === "email") {
+        return Number.NEGATIVE_INFINITY;
+    }
+
     let score = 0;
 
     if (document.activeElement === element) {
@@ -459,17 +464,27 @@ function findPasswordField() {
 }
 
 function findUsernameField(passwordField) {
-    if (isUsernameFieldCandidate(document.activeElement) && document.activeElement !== passwordField) {
-        return document.activeElement;
-    }
-
+    // First, try to find the best candidate by scoring
     const preferredRoot = passwordField?.form || document;
     const preferredField = getUsernameFields(preferredRoot, passwordField)[0];
     if (preferredField) {
         return preferredField;
     }
 
-    return getUsernameFields(document, passwordField)[0] || null;
+    // Fallback: search entire document
+    const documentField = getUsernameFields(document, passwordField)[0];
+    if (documentField) {
+        return documentField;
+    }
+
+    // Last resort: check if active element is a valid candidate
+    if (document.activeElement && 
+        document.activeElement !== passwordField && 
+        isUsernameFieldCandidate(document.activeElement)) {
+        return document.activeElement;
+    }
+
+    return null;
 }
 
 function findOTPFillTarget(root = document) {
@@ -744,11 +759,26 @@ function autofillEntry(request) {
     const otp = typeof request?.otp === "string" ? request.otp : "";
 
     const passwordField = password ? findPasswordField() : null;
-    const usernameField = username ? findUsernameField(passwordField) : null;
+    let usernameField = username ? findUsernameField(passwordField) : null;
     const otpTarget = otp
         ? findOTPFillTarget(passwordField?.form || document) || findOTPFillTarget(document)
         : null;
 
+    // Retry mechanism: If we expect a username but didn't find one, wait a bit and try again
+    // This handles pages where the form is loaded dynamically
+    if (username && !usernameField && passwordField) {
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                usernameField = findUsernameField(passwordField);
+                resolve(performAutofill({ username, password, otp, passwordField, usernameField, otpTarget }));
+            }, 100);
+        });
+    }
+
+    return performAutofill({ username, password, otp, passwordField, usernameField, otpTarget });
+}
+
+function performAutofill({ username, password, otp, passwordField, usernameField, otpTarget }) {
     let filledUsername = false;
     let filledPassword = false;
     let filledOTP = false;
