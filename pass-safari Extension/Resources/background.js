@@ -1,190 +1,195 @@
 const NATIVE_APP_IDS = [
-    "de.zisoft.pass-safari",
-    "de.zisoft.pass-safari.Extension",
+  "de.zisoft.pass-safari",
+  "de.zisoft.pass-safari.Extension",
 ];
 
 const tabsAPI = typeof browser !== 'undefined' ? browser.tabs : chrome.tabs;
 
 function handleUrlChange(url, tabId) {
-    if (!url) return;
-    
-    // Ignoriere Safari-interne Seiten (z.B. Favoriten/Leerer Tab)
-    if (url.startsWith('favorites://') || url.startsWith('safari-')) {
-        return;
-    }
-    
-    setBadgeCountForTab(url, tabId);
+  setBadgeText("", tabId);
+
+  if (!url) return;
+
+  // Ignoriere Safari-interne Seiten (z.B. Favoriten/Leerer Tab)
+  if (url.startsWith('favorites://') || url.startsWith('safari-')) {
+    return;
+  }
+
+  setBadgeCountForTab(url, tabId);
 }
 
 tabsAPI.onUpdated.addListener((tabId, changeInfo, tab) => {
-    if (changeInfo.url) {
-        handleUrlChange(changeInfo.url, tabId);
-    }
+  if (changeInfo.url) {
+    handleUrlChange(changeInfo.url, tabId);
+  }
 });
 
 tabsAPI.onActivated.addListener((activeInfo) => {
-    tabsAPI.get(activeInfo.tabId, (tab) => {
-        if (tab && tab.url) {
-            handleUrlChange(tab.url, tab.id);
-        }
-    });
+  tabsAPI.get(activeInfo.tabId, (tab) => {
+    if (tab && tab.url) {
+      handleUrlChange(tab.url, tab.id);
+    }
+  });
 });
 
 browser.runtime.onMessage.addListener((request, sender) => {
-    if (request?.command === "triggerShortcutAutofill") {
-        return autofillBestMatchForTab(sender.tab);
-    }
+  if (request?.command === "triggerShortcutAutofill") {
+    return autofillBestMatchForTab(sender.tab);
+  }
 
-    return undefined;
+  return undefined;
 });
 
+function setBadgeText(text, tabId) {
+  if (typeof browser !== 'undefined' && browser.action) {
+    browser.action.setBadgeText({ text: text, tabId: tabId });
+    browser.action.setBadgeBackgroundColor({ color: "#FF0000" }); // Optional: Hintergrundfarbe (z.B. Rot)
+  }
+  else if (typeof chrome !== 'undefined' && chrome.action) {
+    chrome.action.setBadgeText({ text: text, tabId: tabId });
+  }
+  else if (typeof browser !== 'undefined' && browser.browserAction) {
+    browser.browserAction.setBadgeText({ text: text, tabId: tabId });
+  }
+}
+
 async function setBadgeCountForTab(pageURL, tabId) {
-    const listResponse = await sendNativeMessage({
-        command: "listEntries",
-        pageURL,
-    });
+  const listResponse = await sendNativeMessage({
+    command: "listEntries",
+    pageURL,
+  });
 
-    if (!listResponse?.ok) {
-        throw new Error(listResponse?.error || "Unable to inspect pass entries for this page.");
-    }
+  if (!listResponse?.ok) {
+    throw new Error(listResponse?.error || "Unable to inspect pass entries for this page.");
+  }
 
-    if (listResponse.suggestedEntries) {
-        const count = `${listResponse.suggestedEntries.length}`;
-        
-        if (typeof browser !== 'undefined' && browser.action) {
-            browser.action.setBadgeText({ text: count, tabId: tabId });
-            browser.action.setBadgeBackgroundColor({ color: "#FF0000" }); // Optional: Hintergrundfarbe (z.B. Rot)
-        }
-        else if (typeof chrome !== 'undefined' && chrome.action) {
-            chrome.action.setBadgeText({ text: count, tabId: tabId });
-        }
-        else if (typeof browser !== 'undefined' && browser.browserAction) {
-            browser.browserAction.setBadgeText({ text: count, tabId: tabId });
-        }
-    }
+  if (listResponse.suggestedEntries) {
+    const count = `${listResponse.suggestedEntries.length}`;
+    setBadgeText(count, tabId);
+  }
 }
 
 async function autofillBestMatchForTab(tab) {
-    const tabId = tab?.id;
-    const pageURL = typeof tab?.url === "string" ? tab.url : "";
-    
-    if (!tabId || !pageURL) {
-        return { ok: false, error: "Unable to find the active page for autofill." };
-    }
+  const tabId = tab?.id;
+  const pageURL = typeof tab?.url === "string" ? tab.url : "";
 
-    const listResponse = await sendNativeMessage({
-        command: "listEntries",
-        pageURL,
-    });
+  if (!tabId || !pageURL) {
+    return { ok: false, error: "Unable to find the active page for autofill." };
+  }
 
-    if (!listResponse?.ok) {
-        throw new Error(listResponse?.error || "Unable to inspect pass entries for this page.");
-    }
-    
-    const entry = typeof listResponse.shortcutMatchEntry === "string"
-        ? listResponse.shortcutMatchEntry
-        : null;
+  const listResponse = await sendNativeMessage({
+    command: "listEntries",
+    pageURL,
+  });
 
-    if (!entry) {
-        await tryOpenPopup();
-        return {
-            ok: false,
-            openedPopup: true,
-            error: "No unambiguous match was found for this page.",
-        };
-    }
+  if (!listResponse?.ok) {
+    throw new Error(listResponse?.error || "Unable to inspect pass entries for this page.");
+  }
 
-    const detailsResponse = await sendNativeMessage({
-        command: "getEntryDetails",
-        entry,
-    });
+  const entry = typeof listResponse.shortcutMatchEntry === "string"
+    ? listResponse.shortcutMatchEntry
+    : null;
 
-    if (!detailsResponse?.ok) {
-        throw new Error(detailsResponse?.error || "Unable to load the matched pass entry.");
-    }
+  if (!entry) {
+    await tryOpenPopup();
+    return {
+      ok: false,
+      openedPopup: true,
+      error: "No unambiguous match was found for this page.",
+    };
+  }
 
-    return sendMessageToTab(tabId, {
-        command: "autofillEntry",
-        entry,
-        password: typeof detailsResponse.password === "string" ? detailsResponse.password : "",
-        username: typeof detailsResponse.username === "string" ? detailsResponse.username : "",
-        otp: typeof detailsResponse.otp === "string" ? detailsResponse.otp : "",
-        url: typeof detailsResponse.url === "string" ? detailsResponse.url : "",
-    });
+  const detailsResponse = await sendNativeMessage({
+    command: "getEntryDetails",
+    entry,
+  });
+
+  if (!detailsResponse?.ok) {
+    throw new Error(detailsResponse?.error || "Unable to load the matched pass entry.");
+  }
+
+  return sendMessageToTab(tabId, {
+    command: "autofillEntry",
+    entry,
+    password: typeof detailsResponse.password === "string" ? detailsResponse.password : "",
+    username: typeof detailsResponse.username === "string" ? detailsResponse.username : "",
+    otp: typeof detailsResponse.otp === "string" ? detailsResponse.otp : "",
+    url: typeof detailsResponse.url === "string" ? detailsResponse.url : "",
+  });
 }
 
 async function tryOpenPopup() {
-    try {
-        if (globalThis.browser?.action?.openPopup) {
-            await globalThis.browser.action.openPopup();
-            return true;
-        }
-
-        if (globalThis.chrome?.action?.openPopup) {
-            await globalThis.chrome.action.openPopup();
-            return true;
-        }
-    } catch (error) {
-        console.warn("Unable to open popup after shortcut autofill lookup.", error);
+  try {
+    if (globalThis.browser?.action?.openPopup) {
+      await globalThis.browser.action.openPopup();
+      return true;
     }
 
-    return false;
+    if (globalThis.chrome?.action?.openPopup) {
+      await globalThis.chrome.action.openPopup();
+      return true;
+    }
+  } catch (error) {
+    console.warn("Unable to open popup after shortcut autofill lookup.", error);
+  }
+
+  return false;
 }
 
 async function sendNativeMessage(message) {
-    let lastError;
+  let lastError;
 
-    for (const applicationId of NATIVE_APP_IDS) {
-        try {
-            return await sendNativeMessageToApp(applicationId, message);
-        } catch (error) {
-            lastError = error;
-        }
+  for (const applicationId of NATIVE_APP_IDS) {
+    try {
+      return await sendNativeMessageToApp(applicationId, message);
+    } catch (error) {
+      lastError = error;
     }
+  }
 
-    throw lastError || new Error("Unable to connect to the native extension handler.");
+  throw lastError || new Error("Unable to connect to the native extension handler.");
 }
 
 async function sendNativeMessageToApp(applicationId, message) {
-    if (globalThis.browser?.runtime?.sendNativeMessage) {
-        return globalThis.browser.runtime.sendNativeMessage(applicationId, message);
-    }
+  if (globalThis.browser?.runtime?.sendNativeMessage) {
+    return globalThis.browser.runtime.sendNativeMessage(applicationId, message);
+  }
 
-    if (globalThis.chrome?.runtime?.sendNativeMessage) {
-        return new Promise((resolve, reject) => {
-            globalThis.chrome.runtime.sendNativeMessage(applicationId, message, (response) => {
-                const runtimeError = globalThis.chrome.runtime?.lastError;
-                if (runtimeError) {
-                    reject(new Error(runtimeError.message));
-                    return;
-                }
+  if (globalThis.chrome?.runtime?.sendNativeMessage) {
+    return new Promise((resolve, reject) => {
+      globalThis.chrome.runtime.sendNativeMessage(applicationId, message, (response) => {
+        const runtimeError = globalThis.chrome.runtime?.lastError;
+        if (runtimeError) {
+          reject(new Error(runtimeError.message));
+          return;
+        }
 
-                resolve(response);
-            });
-        });
-    }
+        resolve(response);
+      });
+    });
+  }
 
-    throw new Error("Native messaging is not available in this browser.");
+  throw new Error("Native messaging is not available in this browser.");
 }
 
 async function sendMessageToTab(tabId, message) {
-    if (globalThis.browser?.tabs?.sendMessage) {
-        return globalThis.browser.tabs.sendMessage(tabId, message);
-    }
+  if (globalThis.browser?.tabs?.sendMessage) {
+    return globalThis.browser.tabs.sendMessage(tabId, message);
+  }
 
-    if (globalThis.chrome?.tabs?.sendMessage) {
-        return new Promise((resolve, reject) => {
-            globalThis.chrome.tabs.sendMessage(tabId, message, (response) => {
-                const runtimeError = globalThis.chrome.runtime?.lastError;
-                if (runtimeError) {
-                    reject(new Error(runtimeError.message));
-                    return;
-                }
+  if (globalThis.chrome?.tabs?.sendMessage) {
+    return new Promise((resolve, reject) => {
+      globalThis.chrome.tabs.sendMessage(tabId, message, (response) => {
+        const runtimeError = globalThis.chrome.runtime?.lastError;
+        if (runtimeError) {
+          reject(new Error(runtimeError.message));
+          return;
+        }
 
-                resolve(response);
-            });
-        });
-    }
+        resolve(response);
+      });
+    });
+  }
 
-    throw new Error("Tab messaging is not available in this browser.");
+  throw new Error("Tab messaging is not available in this browser.");
 }
